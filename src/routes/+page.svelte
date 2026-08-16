@@ -21,7 +21,7 @@
 
 	let suggestions = $state<Suggestion[]>([]);
 	let suggestionsLoading = $state(false);
-	let suggestionsCollapsed = $state(false);
+	let suggestionsCollapsed = $state(true);
 	let dialogOpen = $state(false);
 	let dialogInitialName = $state('');
 
@@ -93,67 +93,76 @@
 	}
 </script>
 
-<div class="flex min-h-full flex-col gap-4 p-4">
+<div class="flex min-h-full flex-col">
 	{#if listStore.loading}
 		<div class="flex flex-1 items-center justify-center py-16">
 			<LoadingSpinner />
 		</div>
 	{:else}
-		<SearchBar onSelect={handleSelectProduct} onAddNew={handleAddNew} />
+		<!-- Search - sticky at top of content area -->
+		<div class="sticky top-14 z-30 bg-[var(--color-bg)] px-4 pb-3 pt-4">
+			<SearchBar onSelect={handleSelectProduct} onAddNew={handleAddNew} />
+		</div>
 
-		<Suggestions
-			suggestions={suggestions}
-			loading={suggestionsLoading}
-			collapsed={suggestionsCollapsed}
-			onToggleCollapse={handleToggleCollapse}
-			onAdd={handleAddSuggestion}
-			onAddAll={handleAddAllSuggestions}
-			getStoreName={listStore.getStoreName.bind(listStore)}
-		/>
-
-		{#if listStore.items.length > 0}
-			<div class="flex flex-col gap-2">
-				<div class="flex items-center justify-between px-1">
-					<h2 class="text-sm font-semibold text-[var(--color-text)]">
-						Items ({listStore.completedCount}/{listStore.itemCount})
-					</h2>
-					<ViewModeSelector currentMode={preferencesStore.viewMode} />
-				</div>
-				<GroupedList
-					viewMode={preferencesStore.viewMode}
-					items={listStore.items}
-					products={Array.from(listStore.products.values())}
-					sections={sectionsArray}
-					stores={storesArray}
-					onToggleItem={(id) => listStore.toggleItem(id)}
-					onDeleteItem={(id) => listStore.removeItem(id)}
-					onReorder={() => listStore.refresh()}
+		<div class="flex flex-col gap-3 px-4 pb-24">
+			<!-- Suggestions - collapsed by default to prioritize the list -->
+			{#if suggestions.length > 0 || suggestionsLoading}
+				<Suggestions
+					suggestions={suggestions}
+					loading={suggestionsLoading}
+					collapsed={suggestionsCollapsed}
+					onToggleCollapse={handleToggleCollapse}
+					onAdd={handleAddSuggestion}
+					onAddAll={handleAddAllSuggestions}
+					getStoreName={listStore.getStoreName.bind(listStore)}
 				/>
-			</div>
-		{:else}
-			<EmptyState
-				icon={ClipboardList}
-				title="Your list is empty"
-				description="Search for products above or tap the + button to add your first item."
-			>
-				{#snippet action()}
-					<Button onclick={handleQuickAdd}>
-						<Plus size={18} />
-						<span class="ml-1">Add Item</span>
-					</Button>
-				{/snippet}
-			</EmptyState>
-		{/if}
+			{/if}
+
+			<!-- Main list content -->
+			{#if listStore.items.length > 0}
+				<div class="flex flex-col gap-2">
+					<div class="flex items-center justify-between">
+						<h2 class="text-sm font-semibold text-[var(--color-text-secondary)]">
+							{listStore.completedCount}/{listStore.itemCount} done
+						</h2>
+						<ViewModeSelector currentMode={preferencesStore.viewMode} />
+					</div>
+					<GroupedList
+						viewMode={preferencesStore.viewMode}
+						items={listStore.items}
+						products={Array.from(listStore.products.values())}
+						sections={sectionsArray}
+						stores={storesArray}
+						onToggleItem={(id) => listStore.toggleItem(id)}
+						onDeleteItem={(id) => listStore.removeItem(id)}
+						onReorder={() => listStore.refresh()}
+					/>
+				</div>
+			{:else}
+				<EmptyState
+					icon={ClipboardList}
+					title="Your list is empty"
+					description="Search above or tap + to start adding items."
+				>
+					{#snippet action()}
+						<Button onclick={handleQuickAdd}>
+							<Plus size={18} />
+							<span class="ml-1">Add Item</span>
+						</Button>
+					{/snippet}
+				</EmptyState>
+			{/if}
+		</div>
 	{/if}
 </div>
 
+<!-- FAB - positioned above bottom nav -->
 <button
 	onclick={handleQuickAdd}
-	class="fixed bottom-20 right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-[var(--color-primary)] text-white shadow-lg active:bg-[var(--color-primary-dark)]"
+	class="fixed bottom-[5.5rem] right-5 z-40 flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--color-primary)] text-white shadow-lg shadow-[var(--color-primary)]/25 transition-transform active:scale-95"
 	aria-label="Add item"
-	style="margin-bottom: var(--safe-area-bottom)"
 >
-	<Plus size={24} />
+	<Plus size={24} strokeWidth={2.5} />
 </button>
 
 <AddItemDialog

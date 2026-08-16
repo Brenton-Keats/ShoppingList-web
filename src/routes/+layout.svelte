@@ -28,7 +28,7 @@
 		{@render children()}
 	</main>
 
-	{#if !isShoppingMode && !isErrorPage}
+	{#if !isShoppingMode && !isErrorPage && !uiStore.dialogOpen}
 		<BottomNav />
 	{/if}
 </div>

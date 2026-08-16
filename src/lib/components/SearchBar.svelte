@@ -15,6 +15,7 @@
 	let isOpen = $state(false);
 	let isLoading = $state(false);
 	let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+	let containerEl: HTMLDivElement | undefined = $state();
 
 	function handleInput() {
 		if (debounceTimer) clearTimeout(debounceTimer);
@@ -31,7 +32,7 @@
 			results = await getProductsForSearch(query);
 			isOpen = true;
 			isLoading = false;
-		}, 300);
+		}, 200);
 	}
 
 	function handleSelect(product: Product) {
@@ -67,16 +68,17 @@
 	);
 </script>
 
-<div class="relative">
-	<div class="flex items-center gap-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2">
+<div class="relative" bind:this={containerEl}>
+	<div class="flex items-center gap-2 rounded-2xl bg-[var(--color-surface)] px-4 py-3 shadow-sm ring-1 ring-[var(--color-border)]">
 		<Search size={18} class="shrink-0 text-[var(--color-text-secondary)]" />
 		<input
 			type="text"
-			placeholder="Search products..."
+			placeholder="Add or search items..."
 			bind:value={query}
 			oninput={handleInput}
 			onkeydown={handleKeyDown}
-			class="flex-1 bg-transparent text-base text-[var(--color-text)] outline-none placeholder:text-[var(--color-text-secondary)]"
+			onfocus={() => { if (query.trim() && results.length > 0) isOpen = true; }}
+			class="flex-1 bg-transparent text-base text-[var(--color-text)] outline-none placeholder:text-[var(--color-text-secondary)]/60"
 			aria-label="Search products"
 			aria-controls="search-results"
 			aria-autocomplete="list"
@@ -91,15 +93,15 @@
 			</button>
 		{/if}
 		{#if isLoading}
-			<div class="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-current border-t-transparent text-[var(--color-primary)]"></div>
+			<div class="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-[var(--color-text-secondary)]/30 border-t-[var(--color-primary)]"></div>
 		{/if}
 	</div>
 
-	{#if isOpen && (results.length > 0 || !hasExactMatch)}
+	{#if isOpen && (results.length > 0 || (!hasExactMatch && query.trim()))}
 		<div
 			id="search-results"
 			role="listbox"
-			class="absolute left-0 right-0 top-full z-40 mt-1 max-h-72 overflow-y-auto rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] shadow-lg"
+			class="absolute left-0 right-0 top-full z-40 mt-2 max-h-72 overflow-y-auto rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-lg"
 		>
 			{#if results.length > 0}
 				<div class="py-1">
@@ -108,23 +110,14 @@
 							role="option"
 							aria-selected="false"
 							onclick={() => handleSelect(product)}
-							class="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors active:bg-[var(--color-surface)]"
+							class="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors active:bg-[var(--color-bg)]"
 						>
+							<div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--color-primary)]/10">
+								<Plus size={14} class="text-[var(--color-primary)]" />
+							</div>
 							<div class="flex-1 min-w-0">
 								<div class="truncate text-sm font-medium text-[var(--color-text)]">
 									{product.name}
-								</div>
-								<div class="flex gap-2 mt-0.5">
-									{#if product.default_section_id}
-										<span class="text-xs text-[var(--color-text-secondary)]">
-											Section
-										</span>
-									{/if}
-									{#if product.default_store_id}
-										<span class="text-xs text-[var(--color-text-secondary)]">
-											Store
-										</span>
-									{/if}
 								</div>
 							</div>
 						</button>
@@ -135,11 +128,13 @@
 			{#if !hasExactMatch && query.trim()}
 				<button
 					onclick={handleAddNew}
-					class="flex w-full items-center gap-2 border-t border-[var(--color-border)] px-4 py-3 text-left transition-colors active:bg-[var(--color-surface)]"
+					class="flex w-full items-center gap-3 border-t border-[var(--color-border)] px-4 py-3 text-left transition-colors active:bg-[var(--color-bg)]"
 				>
-					<Plus size={16} class="text-[var(--color-primary)]" />
+					<div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--color-primary)]/15">
+						<Plus size={14} class="text-[var(--color-primary)]" />
+					</div>
 					<span class="text-sm font-medium text-[var(--color-primary)]">
-						Add "{query.trim()}"
+						Create "{query.trim()}"
 					</span>
 				</button>
 			{/if}
@@ -150,7 +145,7 @@
 <svelte:window
 	onclick={(e) => {
 		const target = e.target as HTMLElement;
-		if (!target.closest('.relative')) {
+		if (containerEl && !containerEl.contains(target)) {
 			isOpen = false;
 		}
 	}}

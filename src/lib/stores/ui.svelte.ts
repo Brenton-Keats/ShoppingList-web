@@ -7,6 +7,7 @@ class UIStore {
 	online = $state(true);
 	headerTitle = $state('');
 	showBackButton = $state(false);
+	dialogOpen = $state(false);
 
 	constructor() {
 		if (typeof window !== 'undefined') {

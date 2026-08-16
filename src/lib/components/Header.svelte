@@ -15,11 +15,10 @@
 			goto('/');
 		}
 	}
-
 </script>
 
 <header
-	class="fixed left-0 right-0 top-0 z-50 border-b border-[var(--color-border)] bg-[var(--color-bg)]/95 backdrop-blur-sm"
+	class="fixed left-0 right-0 top-0 z-50 bg-[var(--color-bg)]"
 	style="padding-top: var(--safe-area-top)"
 >
 	<div class="flex h-14 items-center justify-between px-4">
@@ -33,14 +32,9 @@
 					<ArrowLeft size={22} />
 				</button>
 			{/if}
-			<div class="flex flex-col">
-				<h1 class="text-lg font-bold leading-tight text-[var(--color-text)]">
-					{APP_CONFIG.APP_NAME}
-				</h1>
-				{#if uiStore.headerTitle}
-					<span class="text-xs text-[var(--color-text-secondary)]">{uiStore.headerTitle}</span>
-				{/if}
-			</div>
+			<h1 class="text-lg font-semibold text-[var(--color-text)]">
+				{uiStore.headerTitle || APP_CONFIG.APP_NAME}
+			</h1>
 		</div>
 
 		<div class="flex items-center gap-1">

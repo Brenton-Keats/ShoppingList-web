@@ -2,7 +2,7 @@ import { env } from '$env/dynamic/public';
 import { APP_CONFIG } from '../config';
 
 function getEnv(key: string): string | undefined {
-	return env[key];
+	return env[key as keyof typeof env];
 }
 
 export const ENV = {

@@ -15,10 +15,16 @@
 		<link rel="alternate icon" type="image/x-icon" href="%sveltekit.assets%/favicon.ico" />
 		<link rel="apple-touch-icon" href="%sveltekit.assets%/apple-touch-icon.png" />
 		<link rel="manifest" href="%sveltekit.assets%/manifest.webmanifest" />
-		<script src="%sveltekit.assets%/registerSW.js" defer></script>
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover">
 		<div style="display: contents">%sveltekit.body%</div>
+		<script>
+			if ('serviceWorker' in navigator && !window.location.hostname.includes('localhost')) {
+				window.addEventListener('load', () => {
+					navigator.serviceWorker.register('%sveltekit.assets%/sw.js', { scope: '%sveltekit.assets%/' });
+				});
+			}
+		</script>
 	</body>
 </html>
