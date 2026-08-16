@@ -1,0 +1,35 @@
+<script lang="ts">
+	import { Home, ShoppingCart, Clock, Settings } from '@lucide/svelte';
+	import { page } from '$app/state';
+
+	const tabs = [
+		{ path: '/', label: 'List', icon: Home },
+		{ path: '/shopping', label: 'Shopping', icon: ShoppingCart },
+		{ path: '/history', label: 'History', icon: Clock },
+		{ path: '/settings', label: 'Settings', icon: Settings }
+	];
+
+	const activePath = $derived(page.url.pathname);
+</script>
+
+<nav
+	class="fixed bottom-0 left-0 right-0 z-50 border-t border-[var(--color-border)] bg-[var(--color-bg)]/95 backdrop-blur-sm"
+	style="padding-bottom: var(--safe-area-bottom)"
+>
+	<div class="flex h-16 items-stretch">
+		{#each tabs as tab}
+			{@const isActive = activePath === tab.path}
+			<a
+				href={tab.path}
+				class="flex flex-1 flex-col items-center justify-center gap-0.5 transition-colors {isActive
+					? 'text-[var(--color-primary)]'
+					: 'text-[var(--color-text-secondary)]'}"
+				aria-label={tab.label}
+				aria-current={isActive ? 'page' : undefined}
+			>
+				<tab.icon size={22} strokeWidth={isActive ? 2.5 : 2} />
+				<span class="text-[10px] font-medium">{tab.label}</span>
+			</a>
+		{/each}
+	</div>
+</nav>
