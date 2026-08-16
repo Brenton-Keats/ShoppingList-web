@@ -14,7 +14,7 @@ export interface BaseEntity {
 export interface List extends BaseEntity {
 	name: string;
 	status: ListStatus;
-	sort_order: number;
+	sort_order: string | number;
 	started_at: string | null;
 	archived_at: string | null;
 }
@@ -23,14 +23,14 @@ export interface List extends BaseEntity {
 export interface Section extends BaseEntity {
 	list_id: string;
 	name: string;
-	sort_order: number;
+	sort_order: string | number;
 	active: boolean;
 }
 
 // Stores
 export interface Store extends BaseEntity {
 	name: string;
-	sort_order: number;
+	sort_order: string | number;
 	active: boolean;
 }
 
@@ -53,7 +53,7 @@ export interface ListItem extends BaseEntity {
 	unit: string | null;
 	completed: boolean;
 	completed_at: string | null;
-	sort_order: number;
+	sort_order: string | number;
 }
 
 // Changes (for sync)
