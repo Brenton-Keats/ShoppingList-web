@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { X, ShoppingCart, CheckCircle2, ArrowRight } from '@lucide/svelte';
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { listStore } from '$lib/stores/list.svelte';
 	import { preferencesStore } from '$lib/stores/preferences.svelte';
 	import { calculateShoppingState } from '$lib/shopping/progression';
@@ -59,7 +60,7 @@
 	}
 
 	function handleExit() {
-		goto('/');
+		goto(resolve('/'));
 	}
 
 	function getSectionName(sectionId: string | null): string | null {

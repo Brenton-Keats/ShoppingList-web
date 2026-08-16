@@ -4,15 +4,16 @@
 	import { APP_CONFIG } from '$lib/config';
 	import SyncStatus from './SyncStatus.svelte';
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 
-	const isHome = $derived(page.url.pathname === '/');
+	const isHome = $derived(page.url.pathname === resolve('/'));
 
 	function goBack() {
 		if (history.length > 1) {
 			history.back();
 		} else {
-			goto('/');
+			goto(resolve('/'));
 		}
 	}
 </script>

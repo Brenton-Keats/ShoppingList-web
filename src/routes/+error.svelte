@@ -1,12 +1,13 @@
 <script lang="ts">
 	import { WifiOff, Home, RefreshCw } from '@lucide/svelte';
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { uiStore } from '$lib/stores/ui.svelte';
 
 	let isRetrying = $state(false);
 
 	function goHome() {
-		goto('/');
+		goto(resolve('/'));
 	}
 
 	async function retry() {

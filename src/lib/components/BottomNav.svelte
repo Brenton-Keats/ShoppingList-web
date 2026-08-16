@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { Home, ShoppingCart, Clock, Settings } from '@lucide/svelte';
 	import { page } from '$app/state';
-	import { base } from '$app/paths';
+	import { resolve } from '$app/paths';
 
 	const tabs = [
 		{ path: '/', label: 'List', icon: Home },
@@ -19,8 +19,8 @@
 >
 	<div class="flex h-16 items-stretch">
 		{#each tabs as tab}
-			{@const fullPath = base + tab.path}
-			{@const isActive = activePath === fullPath || (tab.path === '/' && activePath === base + '/')}
+			{@const fullPath = resolve(tab.path)}
+			{@const isActive = activePath === fullPath || (tab.path === '/' && activePath === resolve('/'))}
 			<a
 				href={fullPath}
 				class="flex flex-1 flex-col items-center justify-center gap-1 transition-colors
