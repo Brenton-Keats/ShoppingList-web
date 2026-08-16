@@ -8,7 +8,8 @@
 		LayoutGrid,
 		ArrowUpDown,
 		Download,
-		Info
+		Info,
+		Trash2
 	} from '@lucide/svelte';
 	import { preferencesStore } from '$lib/stores/preferences.svelte';
 	import { uiStore } from '$lib/stores/ui.svelte';
@@ -32,6 +33,7 @@
 	let items = $state<ListItem[]>([]);
 	let products = $state<Product[]>([]);
 	let showExport = $state(false);
+	let confirmClear = $state(false);
 
 	const syncIntervals = [
 		{ value: 15, label: '15 seconds' },
@@ -87,6 +89,34 @@
 
 	function handleManualSync() {
 		syncStore.sync();
+	}
+
+	async function clearAllLocalData() {
+		// Delete IndexedDB
+		const { db } = await import('$lib/db/database');
+		await db.delete();
+
+		// Clear localStorage
+		localStorage.clear();
+
+		// Unregister service workers
+		if ('serviceWorker' in navigator) {
+			const registrations = await navigator.serviceWorker.getRegistrations();
+			for (const reg of registrations) {
+				await reg.unregister();
+			}
+		}
+
+		// Clear caches
+		if ('caches' in window) {
+			const cacheNames = await caches.keys();
+			for (const name of cacheNames) {
+				await caches.delete(name);
+			}
+		}
+
+		// Reload the page to reinitialise cleanly
+		window.location.reload();
 	}
 </script>
 
@@ -245,6 +275,38 @@
 					<span class="font-medium text-[var(--color-text)]">{new Date().toISOString().split('T')[0]}</span>
 				</div>
 			</div>
+		</div>
+	</section>
+
+	<section class="flex flex-col gap-3">
+		<h2 class="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-[var(--color-text-secondary)]">
+			<Trash2 size={16} />
+			Debug
+		</h2>
+		<div class="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
+			<p class="mb-3 text-sm text-[var(--color-text-secondary)]">
+				Clear all local data (IndexedDB, localStorage, service workers). Data on the server is not affected. The app will re-sync on next load.
+			</p>
+			{#if confirmClear}
+				<div class="flex gap-3">
+					<button
+						onclick={() => { confirmClear = false; }}
+						class="flex-1 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] py-3 text-sm font-medium text-[var(--color-text)] active:bg-[var(--color-bg)]"
+					>Cancel</button>
+					<button
+						onclick={clearAllLocalData}
+						class="flex-1 rounded-xl bg-[var(--color-error)] py-3 text-sm font-medium text-white active:brightness-90"
+					>Confirm Clear</button>
+				</div>
+			{:else}
+				<button
+					onclick={() => { confirmClear = true; }}
+					class="inline-flex items-center gap-2 rounded-lg border border-[var(--color-error)] px-4 py-2.5 text-sm font-medium text-[var(--color-error)] active:bg-[var(--color-error)]/10"
+				>
+					<Trash2 size={16} />
+					Clear Local Data
+				</button>
+			{/if}
 		</div>
 	</section>
 </div>

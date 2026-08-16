@@ -8,13 +8,12 @@ const config = {
 		adapter: adapter({
 			pages: 'build',
 			assets: 'build',
-			fallback: 'index.html',
+			fallback: '404.html',
 			precompress: false,
-			strict: true
+			strict: false
 		}),
 		prerender: {
-			entries: ['*'],
-			crawl: true
+			entries: ['/']
 		},
 		paths: {
 			base: process.env.NODE_ENV === 'production' ? '/shoppinglist-web' : ''
