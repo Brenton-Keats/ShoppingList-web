@@ -13,27 +13,27 @@ export default defineConfig({
 				name: 'Shopping List',
 				short_name: 'Shopping',
 				description: 'Offline-first shared shopping list',
-				start_url: '/',
+				start_url: './',
 				display: 'standalone',
 				background_color: '#ffffff',
 				theme_color: '#0f766e',
 				orientation: 'portrait-primary',
-				scope: '/',
+				scope: './',
 				icons: [
 					{
-						src: '/icon-192x192.png',
+						src: 'icon-192x192.png',
 						sizes: '192x192',
 						type: 'image/png',
 						purpose: 'any maskable'
 					},
 					{
-						src: '/icon-512x512.png',
+						src: 'icon-512x512.png',
 						sizes: '512x512',
 						type: 'image/png',
 						purpose: 'any maskable'
 					},
 					{
-						src: '/icon.svg',
+						src: 'icon.svg',
 						sizes: 'any',
 						type: 'image/svg+xml',
 						purpose: 'any'
