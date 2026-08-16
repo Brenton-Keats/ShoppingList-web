@@ -233,4 +233,82 @@ describe('IndexedDB operations', () => {
 			expect(changes[0].operation).toBe('create');
 			expect(changes[0].payload).toEqual({ name: 'Coles', sort_order: 'a1', active: false });
 		});
-	});
+
+		it('preserves section/store in payload when product is created then updated', async () => {
+			// Mimics: addNewProductAndItem creates product, then saveProductEdit updates section/store
+			await recordChange('Product', 'prod-new', 'create', {
+				id: 'prod-new',
+				name: 'Apples',
+				default_section_id: null,
+				default_store_id: null,
+				active: true
+			});
+
+			// User then sets section and store via edit sheet
+			await recordChange('Product', 'prod-new', 'update', {
+				default_section_id: 'sec-produce',
+				default_store_id: 'store-coles'
+			});
+
+			const changes = await db.changes.toArray();
+			expect(changes).toHaveLength(1);
+			expect(changes[0].operation).toBe('create');
+			// Critical: the merged payload must contain the section and store
+			expect(changes[0].payload.default_section_id).toBe('sec-produce');
+			expect(changes[0].payload.default_store_id).toBe('store-coles');
+			// And also the original fields
+			expect(changes[0].payload.name).toBe('Apples');
+			expect(changes[0].payload.active).toBe(true);
+		});
+
+		it('preserves sort_order when product is created then reordered', async () => {
+			await recordChange('Product', 'prod-1', 'create', {
+				id: 'prod-1',
+				name: 'Milk',
+				active: true
+			});
+
+			await recordChange('Product', 'prod-1', 'update', {
+				sort_order: 'a0V'
+			});
+
+			const changes = await db.changes.toArray();
+			expect(changes).toHaveLength(1);
+			expect(changes[0].payload.sort_order).toBe('a0V');
+			expect(changes[0].payload.name).toBe('Milk');
+		});
+
+		it('full product lifecycle: create + set section + set sort_order', async () => {
+			await recordChange('Product', 'prod-x', 'create', {
+				id: 'prod-x',
+				name: 'Bread',
+				default_section_id: null,
+				default_store_id: null,
+				active: true
+			});
+
+			await recordChange('Product', 'prod-x', 'update', {
+				default_section_id: 'sec-bakery'
+			});
+
+			await recordChange('Product', 'prod-x', 'update', {
+				default_store_id: 'store-woolworths'
+			});
+
+			await recordChange('Product', 'prod-x', 'update', {
+				sort_order: 'a1'
+			});
+
+			const changes = await db.changes.toArray();
+			expect(changes).toHaveLength(1);
+			expect(changes[0].operation).toBe('create');
+			expect(changes[0].payload).toEqual({
+				id: 'prod-x',
+				name: 'Bread',
+				default_section_id: 'sec-bakery',
+				default_store_id: 'store-woolworths',
+				active: true,
+				sort_order: 'a1'
+			});
+		});
+});

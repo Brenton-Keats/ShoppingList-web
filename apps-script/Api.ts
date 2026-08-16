@@ -32,43 +32,43 @@ function handlePostSync(body) {
   let acceptedChanges = []; // collect for bulk log write
   let conflicts = [];
 
-  if (baseRevision >= currentRevision || serverChanges.length === 0) {
-    for (let i = 0; i < clientChanges.length; i++) {
-      const change = clientChanges[i];
-      const serverData = findServerData(change.entityType, change.entityId);
+  // Always process client changes, regardless of revision gap
+  for (let i = 0; i < clientChanges.length; i++) {
+    const change = clientChanges[i];
+    const serverData = findServerData(change.entityType, change.entityId);
 
-      if (hasConflict(change, serverData)) {
-        const resolution = resolveConflict(change, serverData);
-        if (resolution.winner === 'client') {
-          applyChange(change);
-          acceptedChanges.push(change);
-          acceptedIds.push(change.id);
-        }
-        conflicts.push({
-          changeId: change.id,
-          entityType: change.entityType,
-          entityId: change.entityId,
-          resolution: resolution.winner,
-          reason: resolution.reason,
-        });
-      } else {
-        const applied = applyChange(change);
-        if (applied) {
-          acceptedChanges.push(change);
-          acceptedIds.push(change.id);
-        }
+    if (hasConflict(change, serverData)) {
+      const resolution = resolveConflict(change, serverData);
+      if (resolution.winner === 'client') {
+        applyChange(change);
+        acceptedChanges.push(change);
+        acceptedIds.push(change.id);
+      }
+      conflicts.push({
+        changeId: change.id,
+        entityType: change.entityType,
+        entityId: change.entityId,
+        resolution: resolution.winner,
+        reason: resolution.reason,
+      });
+    } else {
+      const applied = applyChange(change);
+      if (applied) {
+        acceptedChanges.push(change);
+        acceptedIds.push(change.id);
       }
     }
+  }
 
-    // Batch write all change log entries at once
-    if (acceptedChanges.length > 0) {
-      logChangesBatch(deviceId, acceptedChanges);
-    }
+  // Batch write all change log entries at once
+  if (acceptedChanges.length > 0) {
+    logChangesBatch(deviceId, acceptedChanges);
   }
 
   const finalRevision = getServerRevision();
 
-  if (acceptedIds.length > 0 && baseRevision < finalRevision) {
+  // Return server changes since the client's base revision
+  if (baseRevision < finalRevision) {
     serverChanges = getChangesSince(baseRevision);
   }
 
