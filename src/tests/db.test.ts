@@ -150,3 +150,87 @@ describe('IndexedDB operations', () => {
 		});
 	});
 });
+
+	describe('change coalescing', () => {
+		beforeEach(async () => {
+			await db.changes.clear();
+		});
+
+		it('merges create + update into single create with merged payload', async () => {
+			await recordChange('Product', 'prod-1', 'create', { name: 'Milk', active: true });
+			await recordChange('Product', 'prod-1', 'update', { default_section_id: 'sec-1' });
+
+			const changes = await db.changes.toArray();
+			expect(changes).toHaveLength(1);
+			expect(changes[0].operation).toBe('create');
+			expect(changes[0].payload).toEqual({ name: 'Milk', active: true, default_section_id: 'sec-1' });
+		});
+
+		it('merges update + update into single update with merged payload', async () => {
+			await recordChange('Product', 'prod-1', 'update', { name: 'Whole Milk' });
+			await recordChange('Product', 'prod-1', 'update', { default_store_id: 'store-1' });
+
+			const changes = await db.changes.toArray();
+			expect(changes).toHaveLength(1);
+			expect(changes[0].operation).toBe('update');
+			expect(changes[0].payload).toEqual({ name: 'Whole Milk', default_store_id: 'store-1' });
+		});
+
+		it('cancels create + delete (entity never existed on server)', async () => {
+			await recordChange('Product', 'prod-1', 'create', { name: 'Milk' });
+			await recordChange('Product', 'prod-1', 'delete', {});
+
+			const changes = await db.changes.toArray();
+			expect(changes).toHaveLength(0);
+		});
+
+		it('collapses update + delete into single delete', async () => {
+			await recordChange('Product', 'prod-1', 'update', { name: 'Changed' });
+			await recordChange('Product', 'prod-1', 'delete', {});
+
+			const changes = await db.changes.toArray();
+			expect(changes).toHaveLength(1);
+			expect(changes[0].operation).toBe('delete');
+			expect(changes[0].payload).toEqual({});
+		});
+
+		it('does not coalesce changes for different entities', async () => {
+			await recordChange('Product', 'prod-1', 'create', { name: 'Milk' });
+			await recordChange('Product', 'prod-2', 'create', { name: 'Bread' });
+
+			const changes = await db.changes.toArray();
+			expect(changes).toHaveLength(2);
+		});
+
+		it('does not coalesce changes for different entity types', async () => {
+			await recordChange('Product', 'id-1', 'create', { name: 'Milk' });
+			await recordChange('ListItem', 'id-1', 'create', { name_snapshot: 'Milk' });
+
+			const changes = await db.changes.toArray();
+			expect(changes).toHaveLength(2);
+		});
+
+		it('does not coalesce already-synced changes', async () => {
+			const change = await recordChange('Product', 'prod-1', 'create', { name: 'Milk' });
+			await markChangesSynced([change.id], 1);
+
+			// This should create a new change, not merge with the synced one
+			await recordChange('Product', 'prod-1', 'update', { name: 'Whole Milk' });
+
+			const allChanges = await db.changes.toArray();
+			expect(allChanges).toHaveLength(2);
+			expect(allChanges.filter(c => !c.synced)).toHaveLength(1);
+			expect(allChanges.find(c => !c.synced)?.operation).toBe('update');
+		});
+
+		it('merges multiple sequential updates', async () => {
+			await recordChange('Store', 'store-1', 'create', { name: 'Coles' });
+			await recordChange('Store', 'store-1', 'update', { sort_order: 'a1' });
+			await recordChange('Store', 'store-1', 'update', { active: false });
+
+			const changes = await db.changes.toArray();
+			expect(changes).toHaveLength(1);
+			expect(changes[0].operation).toBe('create');
+			expect(changes[0].payload).toEqual({ name: 'Coles', sort_order: 'a1', active: false });
+		});
+	});

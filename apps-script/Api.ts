@@ -12,6 +12,10 @@ function handleGetData() {
   return jsonResponse(response);
 }
 
+/**
+ * Process batched sync request.
+ * Optimized: applies all entity changes first, then writes the change log in bulk.
+ */
 function handlePostSync(body) {
   const deviceId = body.deviceId || 'unknown';
   const baseRevision = body.baseRevision || 0;
@@ -25,6 +29,7 @@ function handlePostSync(body) {
   }
 
   let acceptedIds = [];
+  let acceptedChanges = []; // collect for bulk log write
   let conflicts = [];
 
   if (baseRevision >= currentRevision || serverChanges.length === 0) {
@@ -36,7 +41,7 @@ function handlePostSync(body) {
         const resolution = resolveConflict(change, serverData);
         if (resolution.winner === 'client') {
           applyChange(change);
-          logChange(deviceId, change.entityType, change.entityId, change.operation, change.data);
+          acceptedChanges.push(change);
           acceptedIds.push(change.id);
         }
         conflicts.push({
@@ -49,10 +54,15 @@ function handlePostSync(body) {
       } else {
         const applied = applyChange(change);
         if (applied) {
-          logChange(deviceId, change.entityType, change.entityId, change.operation, change.data);
+          acceptedChanges.push(change);
           acceptedIds.push(change.id);
         }
       }
+    }
+
+    // Batch write all change log entries at once
+    if (acceptedChanges.length > 0) {
+      logChangesBatch(deviceId, acceptedChanges);
     }
   }
 

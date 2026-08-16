@@ -40,6 +40,49 @@ function logChange(deviceId, entityType, entityId, operation, payload) {
   return revision;
 }
 
+/**
+ * Batch write multiple change log entries in a single setValues() call.
+ * Much faster than individual appendRow() calls for bulk operations.
+ */
+function logChangesBatch(deviceId, changes) {
+  if (changes.length === 0) return;
+
+  const sheet = getSheet(SHEET_NAMES.CHANGES);
+  const timestamp = new Date().toISOString();
+
+  // Get current max revision
+  const lastRow = sheet.getLastRow();
+  let startRevision = 1;
+  if (lastRow > 1) {
+    const data = sheet.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      const rev = parseInt(data[i][0], 10);
+      if (!isNaN(rev) && rev >= startRevision) {
+        startRevision = rev + 1;
+      }
+    }
+  }
+
+  // Build all rows at once
+  const rows = changes.map((change, i) => [
+    startRevision + i,
+    Utilities.getUuid(),
+    timestamp,
+    deviceId,
+    change.entityType,
+    change.entityId,
+    change.operation,
+    JSON.stringify(change.data || {}),
+  ]);
+
+  // Write all rows in a single API call
+  const startRow = lastRow + 1;
+  sheet.getRange(startRow, 1, rows.length, rows[0].length).setValues(rows);
+
+  // Update the server revision to the final value
+  setServerRevision(startRevision + changes.length - 1);
+}
+
 function getChangesSince(revision) {
   const sheet = getSheet(SHEET_NAMES.CHANGES);
   const data = sheet.getDataRange().getValues();
