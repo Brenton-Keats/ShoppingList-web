@@ -16,6 +16,7 @@
 	import { APP_CONFIG } from '$lib/config';
 	import SectionManager from '$lib/components/SectionManager.svelte';
 	import StoreManager from '$lib/components/StoreManager.svelte';
+	import Toggle from '$lib/components/Toggle.svelte';
 	import ExportDialog from '$lib/components/ExportDialog.svelte';
 	import { getActiveList } from '$lib/db/queries';
 	import { getActiveEntities } from '$lib/db/operations';
@@ -93,15 +94,11 @@
 							{preferencesStore.syncMode === 'auto' ? 'Sync automatically' : 'Sync manually'}
 						</div>
 					</div>
-					<button
-						onclick={() => preferencesStore.setSyncMode(preferencesStore.syncMode === 'auto' ? 'manual' : 'auto')}
-						class="relative inline-flex h-7 w-12 items-center rounded-full transition-colors {preferencesStore.syncMode === 'auto' ? 'bg-[var(--color-primary)]' : 'bg-[var(--color-border)]'}"
-						aria-label="Toggle sync mode"
-					>
-						<span
-							class="inline-block h-5 w-5 transform rounded-full bg-white transition-transform {preferencesStore.syncMode === 'auto' ? 'translate-x-6' : 'translate-x-1'}"
-						></span>
-					</button>
+					<Toggle
+						checked={preferencesStore.syncMode === 'auto'}
+						onchange={(v) => preferencesStore.setSyncMode(v ? 'auto' : 'manual')}
+						label="Toggle sync mode"
+					/>
 				</div>
 
 				{#if preferencesStore.syncMode === 'auto'}

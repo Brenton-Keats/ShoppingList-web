@@ -29,7 +29,7 @@ export async function getItemsByStore(listId: string, storeId: string): Promise<
 }
 
 export async function getPendingChanges(): Promise<ChangeRecord[]> {
-	return db.changes.where('synced').equals(0).toArray();
+	return db.changes.filter((c) => c.synced === false).toArray();
 }
 
 export async function getProductsForSearch(query: string): Promise<Product[]> {
