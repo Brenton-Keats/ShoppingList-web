@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { Search, X, ChevronUp, ChevronDown, ChevronRight, Plus, Archive } from '@lucide/svelte';
+	import { Search, X, ChevronUp, ChevronDown, ChevronRight, Plus, Archive, Pencil } from '@lucide/svelte';
 	import { fly, fade } from 'svelte/transition';
 	import { listStore } from '$lib/stores/list.svelte';
 	import { uiStore } from '$lib/stores/ui.svelte';
@@ -266,24 +266,10 @@
 	let allStores = $state<Store[]>([]);
 	let editSectionId = $state<string>('');
 	let editStoreId = $state<string>('');
-	let longPressTimer: ReturnType<typeof setTimeout> | null = null;
 	let addingNewSection = $state(false);
 	let addingNewStore = $state(false);
 	let newSectionName = $state('');
 	let newStoreName = $state('');
-
-	function handlePointerDown(product: Product) {
-		longPressTimer = setTimeout(() => {
-			openEditSheet(product);
-		}, 500);
-	}
-
-	function handlePointerUp() {
-		if (longPressTimer) {
-			clearTimeout(longPressTimer);
-			longPressTimer = null;
-		}
-	}
 
 	async function openEditSheet(product: Product) {
 		allStores = await getActiveEntities<Store>('stores');
@@ -520,26 +506,34 @@
 						</button>
 						{#if !isCollapsed}
 							{#each group.products as { product, onList } (product.id)}
-							<button
-								onclick={() => toggleProduct(product)}
-								onpointerdown={() => handlePointerDown(product)}
-								onpointerup={handlePointerUp}
-								onpointerleave={handlePointerUp}
-								class="flex w-full items-center gap-3 rounded-lg px-2 py-2.5 text-left transition-colors active:bg-[var(--color-surface)]"
-							>
-								<!-- Checkbox -->
-								<div class="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-2 transition-colors {onList ? 'border-[var(--color-primary)] bg-[var(--color-primary)]' : 'border-[var(--color-border)]'}" style="min-height: auto; min-width: auto;">
-									{#if onList}
-										<svg class="h-3.5 w-3.5 text-white" viewBox="0 0 14 14" fill="none">
-											<path d="M2 7l4 4 6-7" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-										</svg>
-									{/if}
-								</div>
-								<!-- Product name -->
-								<span class="flex-1 text-sm {onList ? 'font-medium text-[var(--color-text)]' : 'text-[var(--color-text-secondary)]'}">
-									{product.name}
-								</span>
-							</button>
+							<div class="flex items-center gap-1 rounded-lg transition-colors active:bg-[var(--color-surface)]">
+								<button
+									onclick={() => toggleProduct(product)}
+									class="flex flex-1 items-center gap-3 px-2 py-2.5 text-left"
+								>
+									<!-- Checkbox -->
+									<div class="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-2 transition-colors {onList ? 'border-[var(--color-primary)] bg-[var(--color-primary)]' : 'border-[var(--color-border)]'}" style="min-height: auto; min-width: auto;">
+										{#if onList}
+											<svg class="h-3.5 w-3.5 text-white" viewBox="0 0 14 14" fill="none">
+												<path d="M2 7l4 4 6-7" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+											</svg>
+										{/if}
+									</div>
+									<!-- Product name -->
+									<span class="flex-1 text-sm {onList ? 'font-medium text-[var(--color-text)]' : 'text-[var(--color-text-secondary)]'}">
+										{product.name}
+									</span>
+								</button>
+								<!-- Edit button -->
+								<button
+									onclick={() => openEditSheet(product)}
+									class="flex shrink-0 items-center justify-center rounded-full p-2 text-[var(--color-text-secondary)] active:bg-[var(--color-border)]"
+									style="min-height: 36px; min-width: 36px;"
+									aria-label="Edit {product.name}"
+								>
+									<Pencil size={14} />
+								</button>
+							</div>
 						{/each}
 						{/if}
 					</div>
