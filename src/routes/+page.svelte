@@ -1,18 +1,22 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { Search, X, ChevronUp, ChevronDown, ChevronRight } from '@lucide/svelte';
+	import { Search, X, ChevronUp, ChevronDown, ChevronRight, Plus, Archive } from '@lucide/svelte';
 	import { fly, fade } from 'svelte/transition';
 	import { listStore } from '$lib/stores/list.svelte';
 	import { uiStore } from '$lib/stores/ui.svelte';
 	import { preferencesStore } from '$lib/stores/preferences.svelte';
 	import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
 	import { db } from '$lib/db/database';
-	import { getActiveEntities, createList, updateProduct, createSection, createStore } from '$lib/db/operations';
+	import { getActiveEntities, createList, updateProduct, updateList, createSection, createStore } from '$lib/db/operations';
 	import { compareSortKeys, sortKeyBetween, sortKeyAfter } from '$lib/utils/ordering';
-	import type { Product, Section, Store } from '$lib/types';
+	import type { Product, Section, Store, List } from '$lib/types';
 
 	uiStore.setHeaderTitle('');
 	uiStore.setShowBackButton(false);
+
+	// List management
+	let showListSheet = $state(false);
+	let allLists = $state<List[]>([]);
 
 	let allProducts = $state<Product[]>([]);
 	let allSections = $state<Section[]>([]);
@@ -102,6 +106,88 @@
 	async function loadProducts() {
 		allProducts = await getActiveEntities<Product>('products');
 		allSections = await getActiveEntities<Section>('sections');
+	}
+
+	async function loadLists() {
+		const all = await db.lists.toArray();
+		allLists = all.filter(l => !l.deleted_at).sort((a, b) => {
+			// Active lists first, then by date
+			if (a.status === 'ACTIVE' && b.status !== 'ACTIVE') return -1;
+			if (b.status === 'ACTIVE' && a.status !== 'ACTIVE') return 1;
+			return (b.created_at || '').localeCompare(a.created_at || '');
+		});
+	}
+
+	async function openListSheet() {
+		await loadLists();
+		showListSheet = true;
+		uiStore.dialogOpen = true;
+	}
+
+	function closeListSheet() {
+		showListSheet = false;
+		uiStore.dialogOpen = false;
+	}
+
+	async function switchToList(list: List) {
+		listStore.activeList = list;
+		await listStore.loadListData(list.id);
+		closeListSheet();
+	}
+
+	async function createNewList() {
+		// Only archive current list if it has items
+		if (listStore.activeList && listStore.items.length > 0) {
+			await updateList(listStore.activeList.id, {
+				status: 'ARCHIVED',
+				archived_at: new Date().toISOString()
+			});
+		} else if (listStore.activeList && listStore.items.length === 0) {
+			// Empty list — just keep using it, nothing to do
+			closeListSheet();
+			return;
+		}
+
+		// Create new active list
+		const list = await createList({
+			name: 'Shopping List',
+			status: 'ACTIVE',
+			sort_order: 0,
+			started_at: new Date().toISOString(),
+			archived_at: null
+		});
+
+		listStore.activeList = list;
+		await listStore.loadListData(list.id);
+		closeListSheet();
+	}
+
+	async function archiveCurrentList() {
+		if (!listStore.activeList) return;
+
+		// Don't archive an empty list — just ignore
+		if (listStore.items.length === 0) {
+			closeListSheet();
+			return;
+		}
+
+		await updateList(listStore.activeList.id, {
+			status: 'ARCHIVED',
+			archived_at: new Date().toISOString()
+		});
+
+		// Create a fresh list
+		const list = await createList({
+			name: 'Shopping List',
+			status: 'ACTIVE',
+			sort_order: 0,
+			started_at: new Date().toISOString(),
+			archived_at: null
+		});
+
+		listStore.activeList = list;
+		await listStore.loadListData(list.id);
+		closeListSheet();
 	}
 
 	onMount(async () => {
@@ -355,8 +441,18 @@
 			<LoadingSpinner />
 		</div>
 	{:else}
-		<!-- Search bar -->
-		<div class="px-4 pb-2 pt-3">
+		<!-- List picker + Search bar -->
+		<div class="flex items-center gap-2 px-4 pt-3 pb-1">
+			<button
+				onclick={openListSheet}
+				class="flex items-center gap-1 rounded-lg px-2 py-1 text-left active:bg-[var(--color-surface)]"
+				style="min-height: auto; min-width: auto;"
+			>
+				<ChevronDown size={12} class="text-[var(--color-text-secondary)]" />
+				<span class="text-xs text-[var(--color-text-secondary)]">Switch list</span>
+			</button>
+		</div>
+		<div class="px-4 pb-2">
 			<div class="flex items-center gap-2 rounded-2xl bg-[var(--color-surface)] px-4 py-3 shadow-sm ring-1 ring-[var(--color-border)]">
 				<Search size={18} class="shrink-0 text-[var(--color-text-secondary)]" />
 				<input
@@ -463,6 +559,83 @@
 		</div>
 	{/if}
 </div>
+
+<!-- List management sheet -->
+{#if showListSheet}
+	<!-- svelte-ignore a11y_no_static_element_interactions -->
+	<div
+		class="fixed inset-0 z-[60] flex items-end"
+		role="dialog"
+		aria-modal="true"
+		onkeydown={(e) => { if (e.key === 'Escape') closeListSheet(); }}
+	>
+		<div
+			class="absolute inset-0 bg-black/50"
+			onclick={closeListSheet}
+			transition:fade={{ duration: 200 }}
+		></div>
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
+		<div
+			class="relative w-full rounded-t-3xl bg-[var(--color-bg)] px-5 pt-3 pb-6"
+			style="padding-bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px)); max-height: 70vh;"
+			onclick={(e) => e.stopPropagation()}
+			transition:fly={{ y: 300, duration: 250 }}
+		>
+			<div class="mx-auto mb-3 h-1 w-10 rounded-full bg-[var(--color-border)]"></div>
+
+			<div class="flex items-center justify-between mb-4">
+				<h2 class="text-lg font-semibold text-[var(--color-text)]">Lists</h2>
+				<button
+					onclick={createNewList}
+					class="flex items-center gap-1.5 rounded-lg bg-[var(--color-primary)] px-3 py-2 text-sm font-medium text-white active:brightness-90"
+					style="min-height: auto; min-width: auto;"
+				>
+					<Plus size={16} />
+					New List
+				</button>
+			</div>
+
+			<div class="overflow-y-auto" style="max-height: 40vh;">
+				{#each allLists as list (list.id)}
+					{@const isCurrent = list.id === listStore.activeList?.id}
+					<button
+						onclick={() => switchToList(list)}
+						class="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left {isCurrent ? 'bg-[var(--color-primary)]/10' : 'active:bg-[var(--color-surface)]'}"
+					>
+						<div class="flex-1 min-w-0">
+							<div class="flex items-center gap-2">
+								<span class="truncate text-sm font-medium {isCurrent ? 'text-[var(--color-primary)]' : 'text-[var(--color-text)]'}">
+									{list.name}
+								</span>
+								{#if list.status === 'ARCHIVED'}
+									<span class="rounded bg-[var(--color-border)] px-1.5 py-0.5 text-xs text-[var(--color-text-secondary)]">archived</span>
+								{/if}
+							</div>
+							<span class="text-xs text-[var(--color-text-secondary)]">
+								{new Date(list.created_at).toLocaleDateString()}
+							</span>
+						</div>
+						{#if isCurrent}
+							<span class="text-xs font-medium text-[var(--color-primary)]">Current</span>
+						{/if}
+					</button>
+				{/each}
+			</div>
+
+			{#if listStore.activeList}
+				<div class="mt-4 border-t border-[var(--color-border)] pt-3">
+					<button
+						onclick={archiveCurrentList}
+						class="flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] py-3 text-sm font-medium text-[var(--color-text-secondary)] active:bg-[var(--color-border)]"
+					>
+						<Archive size={16} />
+						Archive current & start new
+					</button>
+				</div>
+			{/if}
+		</div>
+	</div>
+{/if}
 
 <!-- Edit product bottom sheet -->
 {#if editingProduct}

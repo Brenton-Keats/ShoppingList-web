@@ -1,13 +1,19 @@
 <script lang="ts">
 	import { ArrowLeft, Moon, Sun, Monitor } from '@lucide/svelte';
 	import { uiStore } from '$lib/stores/ui.svelte';
-	import { APP_CONFIG } from '$lib/config';
+	import { listStore } from '$lib/stores/list.svelte';
 	import SyncStatus from './SyncStatus.svelte';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 
 	const isHome = $derived(page.url.pathname === resolve('/'));
+
+	const listDate = $derived.by(() => {
+		const date = listStore.activeList?.started_at || listStore.activeList?.created_at;
+		if (!date) return '';
+		return new Date(date).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+	});
 
 	function goBack() {
 		if (history.length > 1) {
@@ -33,9 +39,14 @@
 					<ArrowLeft size={22} />
 				</button>
 			{/if}
-			<h1 class="text-lg font-semibold text-[var(--color-text)]">
-				{uiStore.headerTitle || APP_CONFIG.APP_NAME}
-			</h1>
+			<div class="flex flex-col">
+				<h1 class="text-sm font-semibold leading-tight text-[var(--color-text)]">
+					{uiStore.headerTitle || listStore.activeList?.name || 'Shopping List'}
+				</h1>
+				{#if isHome && listDate && !uiStore.headerTitle}
+					<span class="text-xs text-[var(--color-text-secondary)]">{listDate}</span>
+				{/if}
+			</div>
 		</div>
 
 		<div class="flex items-center gap-1">
