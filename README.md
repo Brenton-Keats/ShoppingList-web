@@ -27,7 +27,7 @@ An offline-first, installable Progressive Web App (PWA) for managing shared shop
 
 ### Prerequisites
 
-- Node.js 18+ and npm
+- Node.js 24+ and npm
 - Google account (for Apps Script backend)
 
 ### Installation
