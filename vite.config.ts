@@ -44,8 +44,7 @@ export default defineConfig({
 			workbox: {
 				globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,json}'],
 				globIgnores: ['**/screenshots/*'],
-				navigateFallback: 'index.html',
-				navigateFallbackDenylist: [/^\/api\//, /^\/auth\//],
+				navigateFallback: null,
 				runtimeCaching: [
 					{
 						urlPattern: ({ url }) => url.href.includes('script.google.com'),

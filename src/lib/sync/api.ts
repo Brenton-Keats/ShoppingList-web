@@ -163,7 +163,7 @@ export async function submitChanges(params: SubmitChangesParams): Promise<Submit
 			fetch(url.toString(), {
 				method: 'POST',
 				headers: {
-					'Content-Type': 'application/json',
+					'Content-Type': 'text/plain',
 					Accept: 'application/json'
 				},
 				body: JSON.stringify({ ...params, apiKey: ENV.PUBLIC_API_KEY })
