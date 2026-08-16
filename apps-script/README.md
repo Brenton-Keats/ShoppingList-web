@@ -122,20 +122,21 @@ Submits client changes and receives server changes.
 2. Click the gear icon and select **Web app**.
 3. Configure the deployment:
    - **Description:** `Shopping List API v1`
-   - **Execute as:** `Me` (the user accessing the app)
+   - **Execute as:** `User accessing the web app`
    - **Who has access:** `Anyone`
 4. Click **Deploy**.
 5. Copy the **Web app URL** shown in the dialog.
 
 ### 6. Configure the Frontend
 
-1. In your frontend project, set the environment variable or configuration value for the Apps Script endpoint:
-   ```
-   VITE_APPS_SCRIPT_URL=https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec
-   ```
-2. The frontend should append query parameters for routing:
-   - Initial sync: `GET {VITE_APPS_SCRIPT_URL}?path=api/data`
-   - Sync changes: `POST {VITE_APPS_SCRIPT_URL}?path=api/sync`
+1. In your GitHub repository, go to **Settings** → **Secrets and variables** → **Actions**.
+2. Add a **New repository secret**:
+   - Name: `PUBLIC_APPS_SCRIPT_URL`
+   - Value: your Apps Script web app URL (e.g., `https://script.google.com/macros/s/AKfycb.../exec`)
+3. The CI workflow injects this at build time. The frontend reads it from `$env/dynamic/public`.
+4. The frontend appends query parameters for routing:
+   - Initial sync: `GET {URL}?path=api/data`
+   - Sync changes: `POST {URL}?path=api/sync`
 
 ### 7. Redeploying After Changes
 

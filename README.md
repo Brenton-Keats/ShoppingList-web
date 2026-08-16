@@ -62,11 +62,13 @@ The build output is written to the `build/` directory as static files, ready for
 
 ### Deployment Options
 
-#### GitHub Pages
+#### GitHub Pages (Recommended)
 
-1. Push to a GitHub repository
-2. Enable GitHub Pages in repository settings
-3. Set source to deploy from the `build` branch or use GitHub Actions
+1. Push this repository to GitHub
+2. Go to **Settings** → **Pages** → set **Source** to **GitHub Actions**
+3. Go to **Settings** → **Secrets and variables** → **Actions** → add repository secret:
+   - `PUBLIC_APPS_SCRIPT_URL` — your deployed Apps Script web app URL
+4. Push to `main` (or trigger workflow manually) — the Actions workflow builds and deploys automatically
 
 #### Netlify / Vercel
 
@@ -80,15 +82,28 @@ Copy the contents of the `build/` directory to your web server's document root. 
 
 ## Environment Variables
 
-Create a `.env` file in the project root (not committed to git):
+### Local Development
+
+Copy `.env.example` to `.env` and fill in your Apps Script URL:
+
+```bash
+cp .env.example .env
+```
 
 ```env
-# Google Apps Script API endpoint
-PUBLIC_GAS_API_URL=https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec
+# Required
+PUBLIC_APPS_SCRIPT_URL=https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec
 
-# Optional: Set base path for non-root deployment
-# NODE_ENV=production
+# Optional — these fall back to package.json defaults
+PUBLIC_APP_NAME=Shopping List
+PUBLIC_APP_VERSION=1.0.0
 ```
+
+> `.env` is **gitignored** — never commit it. It's only used when running `npm run dev` or `npm run build` locally.
+
+### Production (GitHub Pages)
+
+For CI deployment, the variable is injected from **GitHub repository secrets** (see [GitHub Pages deployment](#github-pages-recommended) above). Do not create a `.env` file in the repo for production — the build reads from `secrets.PUBLIC_APPS_SCRIPT_URL` in the Actions workflow.
 
 ## Google Apps Script Deployment
 
@@ -145,7 +160,6 @@ See `apps-script/README.md` for detailed deployment instructions.
 ```
 shoppinglist-web/
 ├── apps-script/          # Google Apps Script backend code
-├── build/               # Production build output
 ├── scripts/             # Build utilities (icon generation)
 ├── src/
 │   ├── app.html         # HTML template with PWA meta tags
@@ -157,6 +171,10 @@ shoppinglist-web/
 │   │   ├── stores/      # Svelte 5 runes-based stores
 │   │   ├── sync/        # Sync engine and conflict resolution
 │   │   ├── view-modes/  # List grouping and projection logic
+│   │   ├── shopping/    # Shopping mode progression logic
+│   │   ├── export/      # Plain text export engine
+│   │   ├── suggestions/ # Item suggestion algorithm
+│   │   ├── drag-drop/   # Drag and drop ordering
 │   │   └── utils/       # Helper utilities
 │   └── routes/          # SvelteKit routes
 │       ├── +page.svelte     # Main list view
@@ -164,10 +182,12 @@ shoppinglist-web/
 │       ├── history/         # Purchase history
 │       └── settings/        # App settings
 ├── static/              # Static assets (icons, manifest)
+├── .github/workflows/   # CI/CD (GitHub Pages deployment)
 ├── svelte.config.js     # SvelteKit configuration
 ├── tailwind.config.js   # Tailwind CSS configuration
 ├── tsconfig.json        # TypeScript configuration
-└── vite.config.ts       # Vite and PWA configuration
+├── vite.config.ts       # Vite and PWA configuration
+└── package.json         # Dependencies and scripts
 ```
 
 ## PWA Checklist
