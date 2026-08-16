@@ -30,6 +30,15 @@
 
 	async function ensureActiveList() {
 		if (!listStore.activeList) {
+			// Re-check DB directly — sync may have populated it after the store loaded
+			const { getActiveList } = await import('$lib/db/queries');
+			const existing = await getActiveList();
+			if (existing) {
+				listStore.activeList = existing;
+				await listStore.loadListData(existing.id);
+				return;
+			}
+
 			const list = await createList({
 				name: 'Shopping List',
 				status: 'ACTIVE',

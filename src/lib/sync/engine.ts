@@ -1,6 +1,8 @@
 import { db } from '$lib/db/database';
 import { getEntityById, softDeleteEntity } from '$lib/db/operations';
 import { markChangesSynced } from '$lib/db/changes';
+import { serialize } from '$lib/db/serialize';
+import { normalizeArray } from '$lib/db/normalize';
 import { getPendingChanges } from '$lib/db/queries';
 import { getOrCreateDeviceId } from '$lib/utils/id';
 import { fetchServerData, submitChanges } from './api';
@@ -89,17 +91,26 @@ export async function applyServerChanges(serverChanges: ServerChange[]): Promise
 	}
 }
 
+/**
+ * Perform an incremental sync via POST /api/sync.
+ *
+ * Always sends baseRevision. If there are pending local changes, they're
+ * included. The server returns changes since baseRevision.
+ *
+ * Returns true if remote data was received (caller should refresh UI).
+ * Returns false if no new data (no UI refresh needed).
+ */
 export async function performSync(): Promise<boolean> {
 	syncStateStore.setSyncing();
 
 	try {
-		const { lastRevision, deviceId } = await getSyncMeta();
-		const pendingChanges = await getPendingChanges();
-
 		if (!navigator.onLine) {
 			syncStateStore.setOffline();
 			return false;
 		}
+
+		const { lastRevision, deviceId } = await getSyncMeta();
+		const pendingChanges = await getPendingChanges();
 
 		const changesPayload = pendingChanges.map((change) => ({
 			id: change.id,
@@ -122,23 +133,28 @@ export async function performSync(): Promise<boolean> {
 			return false;
 		}
 
+		let dataChanged = false;
+
+		// Apply any server-side changes we haven't seen yet
 		if (response.changes.length > 0) {
 			await applyServerChanges(response.changes);
+			dataChanged = true;
+			syncStateStore.dataVersion++;
 		}
 
+		// Mark our submitted changes as synced
 		if (response.acceptedChanges.length > 0) {
 			await markChangesSynced(response.acceptedChanges, response.serverRevision);
 		}
 
-		const now = new Date().toISOString();
-		await updateSyncMeta(response.serverRevision, now);
-
-		syncStateStore.setLastSyncTime(new Date(now));
+		const syncTime = new Date().toISOString();
+		await updateSyncMeta(response.serverRevision, syncTime);
+		syncStateStore.setLastSyncTime(new Date(syncTime));
 		syncStateStore.setServerRevision(response.serverRevision);
 		await syncStateStore.refreshPendingCount();
 		syncStateStore.setIdle();
 
-		return true;
+		return dataChanged;
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error);
 		syncStateStore.setError(message);
@@ -146,6 +162,11 @@ export async function performSync(): Promise<boolean> {
 	}
 }
 
+/**
+ * Full initial data fetch for fresh clients (no syncMeta).
+ * Clears local DB and pulls everything from the server via GET /api/data.
+ * Always returns true (data was loaded).
+ */
 export async function fetchInitialData(): Promise<boolean> {
 	syncStateStore.setSyncing();
 
@@ -167,11 +188,17 @@ export async function fetchInitialData(): Promise<boolean> {
 				await db.products.clear();
 				await db.listItems.clear();
 
-				if (data.lists.length > 0) await db.lists.bulkAdd(data.lists);
-				if (data.sections.length > 0) await db.sections.bulkAdd(data.sections);
-				if (data.stores.length > 0) await db.stores.bulkAdd(data.stores);
-				if (data.products.length > 0) await db.products.bulkAdd(data.products);
-				if (data.listItems.length > 0) await db.listItems.bulkAdd(data.listItems);
+				const lists = normalizeArray(data.lists);
+				const sections = normalizeArray(data.sections);
+				const stores = normalizeArray(data.stores);
+				const products = normalizeArray(data.products);
+				const listItems = normalizeArray(data.listItems);
+
+				if (lists.length > 0) await db.lists.bulkPut(lists);
+				if (sections.length > 0) await db.sections.bulkPut(sections);
+				if (stores.length > 0) await db.stores.bulkPut(stores);
+				if (products.length > 0) await db.products.bulkPut(products);
+				if (listItems.length > 0) await db.listItems.bulkPut(listItems);
 
 				const now = new Date().toISOString();
 				await db.syncMeta.put({
@@ -182,9 +209,9 @@ export async function fetchInitialData(): Promise<boolean> {
 			}
 		);
 
-		const now = new Date().toISOString();
-		syncStateStore.setLastSyncTime(new Date(now));
+		syncStateStore.setLastSyncTime(new Date());
 		syncStateStore.setServerRevision(data.serverRevision);
+		syncStateStore.dataVersion++;
 		await syncStateStore.refreshPendingCount();
 		syncStateStore.setIdle();
 

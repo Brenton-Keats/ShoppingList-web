@@ -1,6 +1,7 @@
 import type { UpdateSpec } from 'dexie';
 import { db } from './database';
 import { recordChange } from './changes';
+import { serialize } from './serialize';
 import { generateUUID, now, isSoftDeleted } from './utils';
 import type {
 	BaseEntity,
@@ -24,7 +25,7 @@ export async function createEntity<T extends BaseEntity>(
 		deleted_at: null
 	} as T;
 
-	await db.table<T>(table).add(newEntity);
+	await db.table<T>(table).add(serialize(newEntity));
 	return newEntity;
 }
 
@@ -34,7 +35,7 @@ export async function updateEntity<T extends BaseEntity>(
 	updates: Partial<T>
 ): Promise<T> {
 	const timestamp = now();
-	const changes = { ...updates, updated_at: timestamp } as Partial<T>;
+	const changes = serialize({ ...updates, updated_at: timestamp }) as Partial<T>;
 
 	await db.table<T>(table).update(id, changes as unknown as UpdateSpec<T>);
 

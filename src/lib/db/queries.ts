@@ -3,28 +3,28 @@ import type { List, Section, ListItem, ChangeRecord, Product, LocalPreferences }
 import { APP_CONFIG } from '$lib/config';
 
 export async function getActiveList(): Promise<List | undefined> {
-	return db.lists.where('status').equals('ACTIVE').and((l) => l.deleted_at === null).first();
+	return db.lists.where('status').equals('ACTIVE').and((l) => !l.deleted_at).first();
 }
 
 export async function getSectionsByList(listId: string): Promise<Section[]> {
-	return db.sections.where('list_id').equals(listId).and((s) => s.deleted_at === null).sortBy('sort_order');
+	return db.sections.where('list_id').equals(listId).and((s) => !s.deleted_at).sortBy('sort_order');
 }
 
 export async function getItemsByList(listId: string): Promise<ListItem[]> {
-	return db.listItems.where('list_id').equals(listId).and((i) => i.deleted_at === null).sortBy('sort_order');
+	return db.listItems.where('list_id').equals(listId).and((i) => !i.deleted_at).sortBy('sort_order');
 }
 
 export async function getItemsBySection(listId: string, sectionId: string): Promise<ListItem[]> {
 	return db.listItems
 		.where({ list_id: listId, section_id: sectionId })
-		.and((i) => i.deleted_at === null)
+		.and((i) => !i.deleted_at)
 		.sortBy('sort_order');
 }
 
 export async function getItemsByStore(listId: string, storeId: string): Promise<ListItem[]> {
 	return db.listItems
 		.where({ list_id: listId, store_id: storeId })
-		.and((i) => i.deleted_at === null)
+		.and((i) => !i.deleted_at)
 		.sortBy('sort_order');
 }
 
@@ -37,7 +37,7 @@ export async function getProductsForSearch(query: string): Promise<Product[]> {
 	if (!lowerQuery) return [];
 
 	return db.products
-		.filter((p) => p.deleted_at === null && p.name.toLowerCase().includes(lowerQuery))
+		.filter((p) => !p.deleted_at && p.name.toLowerCase().includes(lowerQuery))
 		.sortBy('name');
 }
 
@@ -45,7 +45,7 @@ export async function getHistoricalLists(limit?: number): Promise<List[]> {
 	const lists = await db.lists
 		.where('status')
 		.anyOf(['ARCHIVED', 'DRAFT'])
-		.and((l) => l.deleted_at === null)
+		.and((l) => !l.deleted_at)
 		.reverse()
 		.sortBy('updated_at');
 
@@ -69,9 +69,11 @@ export async function getLocalPreferences(): Promise<LocalPreferences> {
 }
 
 export async function saveLocalPreferences(prefs: Partial<LocalPreferences>): Promise<void> {
+	const { serialize } = await import('./serialize');
+	const cleanPrefs = serialize(prefs);
 	const existing = await db.localPrefs.toArray();
 	if (existing.length > 0) {
-		await db.localPrefs.update(existing[0].deviceId, prefs);
+		await db.localPrefs.update(existing[0].deviceId, cleanPrefs);
 	} else {
 		await db.localPrefs.add({
 			viewMode: APP_CONFIG.DEFAULT_VIEW_MODE,
@@ -80,7 +82,7 @@ export async function saveLocalPreferences(prefs: Partial<LocalPreferences>): Pr
 			syncInterval: APP_CONFIG.DEFAULT_SYNC_INTERVAL,
 			deviceId: crypto.randomUUID(),
 			theme: 'auto',
-			...prefs
+			...cleanPrefs
 		});
 	}
 }

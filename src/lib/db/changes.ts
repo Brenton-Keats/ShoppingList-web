@@ -1,4 +1,5 @@
 import { db } from './database';
+import { serialize } from './serialize';
 import { getOrCreateDeviceId } from '$lib/utils/id';
 import { generateUUID, now } from './utils';
 import type { ChangeRecord } from '$lib/types';
@@ -19,7 +20,7 @@ export async function recordChange(
 		entity_type: entityType,
 		entity_id: entityId,
 		operation,
-		payload,
+		payload: serialize(payload),
 		synced: false
 	};
 

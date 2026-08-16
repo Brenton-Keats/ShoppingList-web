@@ -13,6 +13,7 @@
 	import { preferencesStore } from '$lib/stores/preferences.svelte';
 	import { uiStore } from '$lib/stores/ui.svelte';
 	import { syncStore } from '$lib/stores/sync.svelte';
+	import { syncStateStore } from '$lib/sync/state.svelte';
 	import { APP_CONFIG } from '$lib/config';
 	import SectionManager from '$lib/components/SectionManager.svelte';
 	import StoreManager from '$lib/components/StoreManager.svelte';
@@ -72,6 +73,16 @@
 
 	onMount(() => {
 		loadData();
+	});
+
+	// Reload when new remote data arrives
+	let lastDataVersion = 0;
+	$effect(() => {
+		const version = syncStateStore.dataVersion;
+		if (version > lastDataVersion) {
+			lastDataVersion = version;
+			loadData();
+		}
 	});
 
 	function handleManualSync() {
@@ -178,13 +189,7 @@
 			Sections
 		</h2>
 		<div class="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
-			{#if activeList}
-				<SectionManager listId={activeList.id} />
-			{:else}
-				<p class="text-sm text-[var(--color-text-secondary)]">
-					Create an active list to manage sections.
-				</p>
-			{/if}
+			<SectionManager />
 		</div>
 	</section>
 

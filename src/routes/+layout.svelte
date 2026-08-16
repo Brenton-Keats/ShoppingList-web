@@ -3,8 +3,10 @@
 	import Header from '$lib/components/Header.svelte';
 	import BottomNav from '$lib/components/BottomNav.svelte';
 	import InstallPrompt from '$lib/components/InstallPrompt.svelte';
+	import SyncController from '$lib/components/SyncController.svelte';
 	import { uiStore } from '$lib/stores/ui.svelte';
 	import { page } from '$app/state';
+	import { browser } from '$app/environment';
 
 	let { children } = $props();
 
@@ -34,3 +36,6 @@
 </div>
 
 <InstallPrompt />
+{#if browser}
+	<SyncController />
+{/if}

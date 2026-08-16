@@ -10,5 +10,5 @@ export function now(): string {
 }
 
 export function isSoftDeleted<T extends BaseEntity>(entity: T): boolean {
-	return entity.deleted_at !== null;
+	return entity.deleted_at !== null && entity.deleted_at !== '' && entity.deleted_at !== undefined;
 }

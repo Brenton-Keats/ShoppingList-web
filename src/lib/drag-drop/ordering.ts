@@ -16,11 +16,9 @@ export async function reorderStores(storeId: string, newIndex: number): Promise<
 	await reassignSortOrders('stores', reordered);
 }
 
-export async function reorderSections(sectionId: string, newIndex: number, listId: string): Promise<void> {
+export async function reorderSections(sectionId: string, newIndex: number, _listId?: string | null): Promise<void> {
 	const allSections = await getActiveEntities<Section>('sections');
-	const sections = allSections
-		.filter((s) => s.list_id === listId)
-		.sort((a, b) => a.sort_order - b.sort_order);
+	const sections = allSections.sort((a, b) => a.sort_order - b.sort_order);
 
 	const oldIndex = sections.findIndex((s) => s.id === sectionId);
 	if (oldIndex === -1) return;

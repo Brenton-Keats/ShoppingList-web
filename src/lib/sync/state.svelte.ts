@@ -12,6 +12,8 @@ class SyncStateStore {
 	pendingCount = $state(0);
 	lastSyncTime = $state<Date | null>(null);
 	serverRevision = $state<number | null>(null);
+	/** Increments each time new remote data is applied locally */
+	dataVersion = $state(0);
 
 	constructor() {
 		if (typeof window !== 'undefined') {

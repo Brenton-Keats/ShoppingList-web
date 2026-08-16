@@ -7,6 +7,7 @@
 		softDeleteSection,
 		getActiveEntities
 	} from '$lib/db/operations';
+	import { syncStateStore } from '$lib/sync/state.svelte';
 	import { reorderSections } from '$lib/drag-drop/ordering';
 	import { findDropTarget } from '$lib/drag-drop/detection';
 	import type { DragStartEvent } from '$lib/drag-drop/detection';
@@ -14,10 +15,7 @@
 
 
 	interface Props {
-		listId: string;
 	}
-
-	let { listId }: Props = $props();
 
 	let sections = $state<Section[]>([]);
 	let loading = $state(true);
@@ -31,13 +29,13 @@
 
 	async function load() {
 		const all = await getActiveEntities<Section>('sections');
-		sections = all
-			.filter((s) => s.list_id === listId)
-			.sort((a, b) => a.sort_order - b.sort_order);
+		sections = all.sort((a, b) => a.sort_order - b.sort_order);
 		loading = false;
 	}
 
+	// Re-run when dataVersion changes (new remote data arrived)
 	$effect(() => {
+		syncStateStore.dataVersion;
 		load();
 	});
 
@@ -59,7 +57,7 @@
 
 		const maxOrder = sections.length > 0 ? Math.max(...sections.map((s) => s.sort_order)) : 0;
 		await createSection({
-			list_id: listId,
+			list_id: null,
 			name,
 			sort_order: maxOrder + 1,
 			active: true
@@ -144,7 +142,7 @@
 		const targetIndex = sections.findIndex((s) => s.id === target.id);
 		if (targetIndex === -1) return;
 
-		await reorderSections(sectionId, targetIndex, listId);
+		await reorderSections(sectionId, targetIndex, null);
 		await load();
 	}
 
@@ -218,7 +216,7 @@
 					data-section-id={section.id}
 				>
 					<DragHandle
-						data={{ type: 'section', id: section.id, listId }}
+						data={{ type: 'section', id: section.id }}
 						onDragStart={handleDragStart}
 						onDragMove={handleDragMove}
 						onDragEnd={(x, y) => handleDragEnd(section.id, x, y)}
@@ -267,11 +265,14 @@
 
 						<button
 							onclick={() => toggleActive(section)}
-							class="relative inline-flex h-6 w-10 items-center rounded-full transition-colors {section.active ? 'bg-[var(--color-primary)]' : 'bg-[var(--color-border)]'}"
+							role="switch"
+							aria-checked={section.active}
+							class="relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition-colors {section.active ? 'bg-[var(--color-primary)]' : 'bg-[var(--color-border)]'}"
+							style="min-height: 1.75rem; min-width: 3rem;"
 							aria-label={section.active ? 'Deactivate' : 'Activate'}
 						>
 							<span
-								class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform {section.active ? 'translate-x-5' : 'translate-x-1'}"
+								class="inline-block h-5 w-5 rounded-full bg-white shadow-sm transition-transform {section.active ? 'translate-x-6' : 'translate-x-1'}"
 							></span>
 						</button>
 

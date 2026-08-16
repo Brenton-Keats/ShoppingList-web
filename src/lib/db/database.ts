@@ -28,11 +28,11 @@ class ShoppingListDatabase extends Dexie {
 	constructor() {
 		super('ShoppingListDB');
 
-		this.version(1).stores({
+		this.version(2).stores({
 			products: 'id, name',
 			lists: 'id, status',
 			sections: 'id, list_id',
-			stores: 'id, active',
+			stores: 'id',
 			listItems: 'id, list_id, product_id, section_id, store_id, completed',
 			changes: 'id, synced, revision',
 			syncMeta: 'id',

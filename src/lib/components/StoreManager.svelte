@@ -7,6 +7,7 @@
 		softDeleteStore,
 		getActiveEntities
 	} from '$lib/db/operations';
+	import { syncStateStore } from '$lib/sync/state.svelte';
 	import { reorderStores } from '$lib/drag-drop/ordering';
 	import { findDropTarget } from '$lib/drag-drop/detection';
 	import type { DragStartEvent } from '$lib/drag-drop/detection';
@@ -27,7 +28,9 @@
 		loading = false;
 	}
 
+	// Re-run when dataVersion changes (new remote data arrived)
 	$effect(() => {
+		syncStateStore.dataVersion;
 		load();
 	});
 
@@ -256,11 +259,14 @@
 
 						<button
 							onclick={() => toggleActive(store)}
-							class="relative inline-flex h-6 w-10 items-center rounded-full transition-colors {store.active ? 'bg-[var(--color-primary)]' : 'bg-[var(--color-border)]'}"
+							role="switch"
+							aria-checked={store.active}
+							class="relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition-colors {store.active ? 'bg-[var(--color-primary)]' : 'bg-[var(--color-border)]'}"
+							style="min-height: 1.75rem; min-width: 3rem;"
 							aria-label={store.active ? 'Deactivate' : 'Activate'}
 						>
 							<span
-								class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform {store.active ? 'translate-x-5' : 'translate-x-1'}"
+								class="inline-block h-5 w-5 rounded-full bg-white shadow-sm transition-transform {store.active ? 'translate-x-6' : 'translate-x-1'}"
 							></span>
 						</button>
 

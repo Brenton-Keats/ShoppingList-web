@@ -20,8 +20,6 @@ class SyncStore {
 	constructor() {
 		if (typeof window !== 'undefined') {
 			this.initializeFromIndexedDB();
-			setupConnectivityListeners();
-			checkSyncNeededOnStartup();
 		}
 	}
 

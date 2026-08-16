@@ -9,19 +9,20 @@ An offline-first, installable Progressive Web App (PWA) for managing shared shop
 - **Shared Lists**: Collaborate with family members via Google Sheets backend.
 - **Smart Organization**: Group items by store or category with drag-and-drop reordering.
 - **Shopping Mode**: Clean, focused view for checking off items while shopping.
-- **Suggestions**: AI-powered suggestions based on your shopping history.
+- **Suggestions**: Frequency-based suggestions from your shopping history.
 - **History Tracking**: View past shopping trips and frequently bought items.
 - **Export**: Share lists via text, email, or messaging apps.
 - **Dark Mode**: Automatic or manual theme switching.
 
 ## Tech Stack
 
-- **Frontend**: SvelteKit 5, TypeScript, Tailwind CSS
+- **Frontend**: SvelteKit 5, TypeScript, Tailwind CSS v4
 - **Database**: Dexie (IndexedDB wrapper) for local storage
 - **Sync**: Google Apps Script REST API with Google Sheets backend
-- **PWA**: vite-plugin-pwa with Workbox for service worker and caching
+- **PWA**: vite-plugin-pwa (generateSW strategy) with Workbox
 - **Icons**: Lucide Svelte
-- **Build**: Vite with static adapter
+- **Build**: Vite 8 with static adapter
+- **Testing**: Vitest with fake-indexeddb
 
 ## Development Setup
 
@@ -66,8 +67,9 @@ The build output is written to the `build/` directory as static files, ready for
 
 1. Push this repository to GitHub
 2. Go to **Settings** → **Pages** → set **Source** to **GitHub Actions**
-3. Go to **Settings** → **Secrets and variables** → **Actions** → add repository secret:
+3. Go to **Settings** → **Secrets and variables** → **Actions** → add repository secrets:
    - `PUBLIC_APPS_SCRIPT_URL` — your deployed Apps Script web app URL
+   - `PUBLIC_API_KEY` — shared API key (must match Apps Script's Script Properties)
 4. Push to `main` (or trigger workflow manually) — the Actions workflow builds and deploys automatically
 
 #### Netlify / Vercel
@@ -93,8 +95,9 @@ cp .env.example .env
 ```env
 # Required
 PUBLIC_APPS_SCRIPT_URL=https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec
+PUBLIC_API_KEY=your-shared-api-key
 
-# Optional — these fall back to package.json defaults
+# Optional — these fall back to defaults
 PUBLIC_APP_NAME=Shopping List
 PUBLIC_APP_VERSION=1.0.0
 ```
@@ -103,7 +106,11 @@ PUBLIC_APP_VERSION=1.0.0
 
 ### Production (GitHub Pages)
 
-For CI deployment, the variable is injected from **GitHub repository secrets** (see [GitHub Pages deployment](#github-pages-recommended) above). Do not create a `.env` file in the repo for production — the build reads from `secrets.PUBLIC_APPS_SCRIPT_URL` in the Actions workflow.
+For CI deployment, variables are injected from **GitHub repository secrets** (see [GitHub Pages deployment](#github-pages-recommended) above). Do not create a `.env` file in the repo for production — the build reads from `secrets.PUBLIC_APPS_SCRIPT_URL` and `secrets.PUBLIC_API_KEY` in the Actions workflow.
+
+## Security
+
+Authentication uses a shared API key. See `SECURITY.md` for the full threat model and future hardening options.
 
 ## Google Apps Script Deployment
 
@@ -111,18 +118,13 @@ The backend runs on Google Apps Script with Google Sheets as the data store.
 
 ### Setup
 
-1. Open [Google Apps Script](https://script.google.com)
-2. Create a new project
-3. Copy the code from the `apps-script/` directory:
-   - `Code.ts` - Main entry point
-   - `Api.ts` - API handlers
-   - `Types.ts` - Type definitions
-   - `SheetUtils.ts` - Google Sheets helpers
-   - `ChangeLog.ts` - Change tracking
-   - `Conflict.ts` - Conflict resolution
-   - `Config.ts` - Configuration
-4. Deploy as a web app (Execute as: Me, Access: Anyone)
-5. Copy the deployment URL to your `.env` file
+1. Create a new Google Spreadsheet
+2. Go to **Extensions** → **Apps Script** (this binds the script to the sheet)
+3. Copy the code from the `apps-script/` directory into the editor
+4. Run `initializeSpreadsheet()` to set up sheets and headers
+5. Set Script Properties: **Project Settings** → **Script Properties** → add `API_KEY`
+6. Deploy as a web app (**Execute as: Me**, **Who has access: Anyone**)
+7. Copy the deployment URL to your `.env` file and GitHub secrets
 
 See `apps-script/README.md` for detailed deployment instructions.
 
@@ -148,6 +150,27 @@ See `apps-script/README.md` for detailed deployment instructions.
 2. Look for the install icon in the address bar (or menu)
 3. Click "Install Shopping List"
 
+## Architecture
+
+```
+Server (Google Sheets + Apps Script)
+    ↓ raw JSON (may have type mismatches from Sheets)
+normalizeArray()  ←── single ingestion boundary
+    ↓ canonical TypeScript types
+IndexedDB (Dexie)
+    ↓ trusted, typed data
+Queries / Operations ←── serialize() strips reactive proxies on writes
+    ↓
+Svelte stores + SyncController
+    ↓ reactive state
+UI Components
+```
+
+Key boundaries:
+- **Normalization** (`db/normalize.ts`) — coerces server data to match TypeScript interfaces (empty strings → null, string booleans → boolean, etc.)
+- **Serialization** (`db/serialize.ts`) — strips Svelte 5 reactive proxies before IndexedDB writes
+- **SyncController** (`components/SyncController.svelte`) — client-only component managing sync lifecycle, avoiding SSR issues
+
 ## Offline Behavior
 
 - The app caches its shell and assets on first visit
@@ -163,29 +186,39 @@ shoppinglist-web/
 ├── scripts/             # Build utilities (icon generation)
 ├── src/
 │   ├── app.html         # HTML template with PWA meta tags
-│   ├── app.css          # Global styles and CSS variables
-│   ├── service-worker.ts # Custom service worker with caching strategies
+│   ├── app.css          # Global styles (Tailwind v4) and CSS variables
 │   ├── lib/
 │   │   ├── components/  # Svelte UI components
+│   │   ├── config/      # Environment and app configuration
 │   │   ├── db/          # Dexie database layer
-│   │   ├── stores/      # Svelte 5 runes-based stores
-│   │   ├── sync/        # Sync engine and conflict resolution
+│   │   │   ├── database.ts   # Schema definition
+│   │   │   ├── normalize.ts  # Server data normalization (ingestion boundary)
+│   │   │   ├── serialize.ts  # Proxy stripping for IndexedDB writes
+│   │   │   ├── operations.ts # CRUD operations
+│   │   │   ├── queries.ts    # Read queries
+│   │   │   ├── changes.ts    # Change tracking
+│   │   │   └── utils.ts      # Helpers (UUID, timestamps)
+│   │   ├── stores/      # Svelte 5 runes-based stores (.svelte.ts)
+│   │   ├── sync/        # Sync engine, scheduler, API client
 │   │   ├── view-modes/  # List grouping and projection logic
 │   │   ├── shopping/    # Shopping mode progression logic
 │   │   ├── export/      # Plain text export engine
 │   │   ├── suggestions/ # Item suggestion algorithm
 │   │   ├── drag-drop/   # Drag and drop ordering
 │   │   └── utils/       # Helper utilities
+│   ├── tests/           # Vitest unit tests
 │   └── routes/          # SvelteKit routes
-│       ├── +page.svelte     # Main list view
+│       ├── +layout.svelte   # App shell, SyncController
+│       ├── +page.svelte     # Main list builder
 │       ├── shopping/        # Shopping mode
-│       ├── history/         # Purchase history
+│       ├── history/         # Historical lists
 │       └── settings/        # App settings
 ├── static/              # Static assets (icons, manifest)
 ├── .github/workflows/   # CI/CD (GitHub Pages deployment)
-├── svelte.config.js     # SvelteKit configuration
+├── SECURITY.md          # Authentication model and threat assessment
+├── svelte.config.js     # SvelteKit configuration (static adapter)
 ├── tailwind.config.js   # Tailwind CSS configuration
-├── tsconfig.json        # TypeScript configuration
+├── vitest.config.ts     # Test configuration
 ├── vite.config.ts       # Vite and PWA configuration
 └── package.json         # Dependencies and scripts
 ```
@@ -202,6 +235,18 @@ shoppinglist-web/
 - [x] Touch targets >= 44px
 - [x] Install prompt handling
 - [x] Works offline after first load
+
+## Testing
+
+```bash
+# Run unit tests
+npm test
+
+# Run tests in watch mode
+npm run test:watch
+```
+
+Tests use Vitest with fake-indexeddb to validate the database layer, normalization, and serialization boundaries.
 
 ## License
 
