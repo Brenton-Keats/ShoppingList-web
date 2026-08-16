@@ -1,5 +1,5 @@
 import { performSync } from './engine';
-import { syncStateStore } from './state';
+import { syncStateStore } from './state.svelte';
 
 let autoSyncIntervalId: ReturnType<typeof setInterval> | null = null;
 let isManualSyncInProgress = false;

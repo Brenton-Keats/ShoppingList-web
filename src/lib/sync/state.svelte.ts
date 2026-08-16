@@ -14,7 +14,9 @@ class SyncStateStore {
 	serverRevision = $state<number | null>(null);
 
 	constructor() {
-		this.refreshPendingCount();
+		if (typeof window !== 'undefined') {
+			this.refreshPendingCount();
+		}
 	}
 
 	getSyncState(): SyncState {

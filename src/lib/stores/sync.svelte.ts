@@ -1,5 +1,5 @@
 import type { SyncStatus } from '$lib/types';
-import { syncStateStore, type SyncState } from '$lib/sync/state';
+import { syncStateStore, type SyncState } from '$lib/sync/state.svelte';
 import {
 	startAutoSync as schedulerStartAutoSync,
 	stopAutoSync as schedulerStopAutoSync,
@@ -18,10 +18,8 @@ class SyncStore {
 	serverRevision = $state<number | null>(null);
 
 	constructor() {
-		this.initializeFromIndexedDB();
-		this.setupStateSubscription();
-
 		if (typeof window !== 'undefined') {
+			this.initializeFromIndexedDB();
 			setupConnectivityListeners();
 			checkSyncNeededOnStartup();
 		}
@@ -41,26 +39,7 @@ class SyncStore {
 		this.updateStatusFromState();
 	}
 
-	private setupStateSubscription(): void {
-		$effect(() => {
-			const state = syncStateStore.state;
-			this.updateStatusFromSyncState(state);
-		});
-
-		$effect(() => {
-			this.pendingCount = syncStateStore.pendingCount;
-		});
-
-		$effect(() => {
-			this.lastSync = syncStateStore.lastSyncTime;
-		});
-
-		$effect(() => {
-			this.serverRevision = syncStateStore.serverRevision;
-		});
-	}
-
-	private updateStatusFromSyncState(state: SyncState): void {
+	updateStatusFromSyncState(state: SyncState): void {
 		switch (state.status) {
 			case 'idle':
 				this.status = this.pendingCount > 0 ? 'pending' : 'synced';
@@ -135,3 +114,23 @@ class SyncStore {
 }
 
 export const syncStore = new SyncStore();
+
+// Set up reactive subscriptions using $effect.root (works at module level in .svelte.ts)
+$effect.root(() => {
+	$effect(() => {
+		const state = syncStateStore.state;
+		syncStore.updateStatusFromSyncState(state);
+	});
+
+	$effect(() => {
+		syncStore.pendingCount = syncStateStore.pendingCount;
+	});
+
+	$effect(() => {
+		syncStore.lastSync = syncStateStore.lastSyncTime;
+	});
+
+	$effect(() => {
+		syncStore.serverRevision = syncStateStore.serverRevision;
+	});
+});

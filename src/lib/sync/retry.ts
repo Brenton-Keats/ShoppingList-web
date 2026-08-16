@@ -1,5 +1,5 @@
 import { performSync } from './engine';
-import { syncStateStore } from './state';
+import { syncStateStore } from './state.svelte';
 
 const DEFAULT_MAX_RETRIES = 5;
 const DEFAULT_BASE_DELAY_MS = 2000;

@@ -6,9 +6,8 @@ export default defineConfig({
 	plugins: [
 		sveltekit(),
 		VitePWA({
-			strategies: 'injectManifest',
-			srcDir: 'src',
-			filename: 'service-worker.ts',
+			strategies: 'generateSW',
+			registerType: 'autoUpdate',
 			manifest: {
 				name: 'Shopping List',
 				short_name: 'Shopping',
@@ -42,9 +41,25 @@ export default defineConfig({
 				categories: ['productivity', 'shopping'],
 				lang: 'en'
 			},
-			injectManifest: {
+			workbox: {
 				globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,json}'],
-				globIgnores: ['**/screenshots/*']
+				globIgnores: ['**/screenshots/*'],
+				navigateFallback: 'index.html',
+				navigateFallbackDenylist: [/^\/api\//, /^\/auth\//],
+				runtimeCaching: [
+					{
+						urlPattern: ({ url }) => url.href.includes('script.google.com'),
+						handler: 'NetworkFirst',
+						options: {
+							cacheName: 'api-cache',
+							expiration: {
+								maxEntries: 50,
+								maxAgeSeconds: 60 * 60 * 24
+							},
+							networkTimeoutSeconds: 10
+						}
+					}
+				]
 			},
 			devOptions: {
 				enabled: true,

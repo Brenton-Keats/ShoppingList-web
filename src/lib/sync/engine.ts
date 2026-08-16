@@ -4,7 +4,7 @@ import { markChangesSynced } from '$lib/db/changes';
 import { getPendingChanges } from '$lib/db/queries';
 import { getOrCreateDeviceId } from '$lib/utils/id';
 import { fetchServerData, submitChanges } from './api';
-import { syncStateStore } from './state';
+import { syncStateStore } from './state.svelte';
 import { resolveConflict, type ServerChange } from './conflict';
 import type { BaseEntity } from '$lib/types';
 
