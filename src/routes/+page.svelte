@@ -318,7 +318,7 @@
 		const section = await createSection({
 			list_id: null,
 			name,
-			sort_order: allSections.length,
+			sort_order: sortKeyAfter(allSections.length > 0 ? allSections[allSections.length - 1].sort_order : null),
 			active: true
 		});
 		allSections = [...allSections, section];
@@ -332,7 +332,7 @@
 		if (!name) return;
 		const store = await createStore({
 			name,
-			sort_order: allStores.length,
+			sort_order: sortKeyAfter(allStores.length > 0 ? allStores[allStores.length - 1].sort_order : null),
 			active: true
 		});
 		allStores = [...allStores, store];
@@ -346,10 +346,23 @@
 		const newSectionId = editSectionId || null;
 		const newStoreId = editStoreId || null;
 
+		// If section changed, generate a sort key for the end of the new section
+		let newSortOrder = editingProduct.sort_order;
+		if (newSectionId !== (editingProduct.default_section_id || null)) {
+			const productsInNewSection = allProducts
+				.filter(p => (p.default_section_id || null) === newSectionId && p.id !== editingProduct!.id)
+				.sort((a, b) => compareSortKeys(a.sort_order, b.sort_order));
+			const lastKey = productsInNewSection.length > 0
+				? productsInNewSection[productsInNewSection.length - 1].sort_order
+				: null;
+			newSortOrder = sortKeyAfter(lastKey);
+		}
+
 		// Update the product defaults
 		await updateProduct(editingProduct.id, {
 			default_section_id: newSectionId,
-			default_store_id: newStoreId
+			default_store_id: newStoreId,
+			sort_order: newSortOrder
 		});
 
 		// Also update any existing ListItem for this product on the active list
@@ -358,7 +371,8 @@
 		if (listItem) {
 			await updateListItem(listItem.id, {
 				section_id: newSectionId,
-				store_id: newStoreId
+				store_id: newStoreId,
+				sort_order: newSortOrder
 			});
 			await listStore.loadActiveList();
 		}
@@ -384,8 +398,8 @@
 		if (index <= 0) return;
 
 		// Generate a key between the item two above and the item above
-		const keyAboveAbove = index >= 2 ? String(siblings[index - 2].sort_order) : null;
-		const keyAbove = String(siblings[index - 1].sort_order);
+		const keyAboveAbove = index >= 2 ? siblings[index - 2].sort_order as any : null;
+		const keyAbove = siblings[index - 1].sort_order as any;
 		const newKey = sortKeyBetween(keyAboveAbove, keyAbove);
 
 		await updateProduct(editingProduct.id, { sort_order: newKey });
@@ -405,8 +419,8 @@
 		if (index >= siblings.length - 1) return;
 
 		// Generate a key between the item below and the item two below
-		const keyBelow = String(siblings[index + 1].sort_order);
-		const keyBelowBelow = index + 2 < siblings.length ? String(siblings[index + 2].sort_order) : null;
+		const keyBelow = siblings[index + 1].sort_order as any;
+		const keyBelowBelow = index + 2 < siblings.length ? siblings[index + 2].sort_order as any : null;
 		const newKey = sortKeyBetween(keyBelow, keyBelowBelow);
 
 		await updateProduct(editingProduct.id, { sort_order: newKey });

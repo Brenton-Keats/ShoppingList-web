@@ -1,5 +1,6 @@
 import type { List, ListItem, Product, Section, Store } from '$lib/types';
 import { db } from '$lib/db/database';
+import { sortKeyAfter } from '$lib/utils/ordering';
 import {
 	getActiveList,
 	getItemsByList
@@ -99,7 +100,7 @@ class ListStore {
 			unit: null,
 			completed: false,
 			completed_at: null,
-			sort_order: this.items.length
+			sort_order: sortKeyAfter(this.items.length > 0 ? this.items[this.items.length - 1].sort_order : null)
 		});
 
 		this.items = [...this.items, item];
@@ -132,7 +133,7 @@ class ListStore {
 			unit: null,
 			completed: false,
 			completed_at: null,
-			sort_order: this.items.length
+			sort_order: sortKeyAfter(this.items.length > 0 ? this.items[this.items.length - 1].sort_order : null)
 		});
 
 		this.items = [...this.items, item];

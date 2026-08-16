@@ -13,24 +13,29 @@ import { generateKeyBetween, generateNKeysBetween } from 'fractional-indexing';
  * Generate a sort key that comes after the given key.
  * Use when appending to the end of a list.
  */
-export function sortKeyAfter(lastKey: string | null): string {
-	return generateKeyBetween(lastKey, null);
+export function sortKeyAfter(lastKey: string | null | undefined): string {
+	const clean = typeof lastKey === 'string' && lastKey.length > 0 ? lastKey : null;
+	return generateKeyBetween(clean, null);
 }
 
 /**
  * Generate a sort key that comes before the given key.
  * Use when prepending to the start of a list.
  */
-export function sortKeyBefore(firstKey: string | null): string {
-	return generateKeyBetween(null, firstKey);
+export function sortKeyBefore(firstKey: string | null | undefined): string {
+	const clean = typeof firstKey === 'string' && firstKey.length > 0 ? firstKey : null;
+	return generateKeyBetween(null, clean);
 }
 
 /**
  * Generate a sort key between two existing keys.
  * Use when inserting between two items.
+ * Handles undefined/numeric legacy values by treating them as null.
  */
-export function sortKeyBetween(before: string | null, after: string | null): string {
-	return generateKeyBetween(before, after);
+export function sortKeyBetween(before: string | number | null | undefined, after: string | number | null | undefined): string {
+	const cleanBefore = typeof before === 'string' && before.length > 0 ? before : null;
+	const cleanAfter = typeof after === 'string' && after.length > 0 ? after : null;
+	return generateKeyBetween(cleanBefore, cleanAfter);
 }
 
 /**
