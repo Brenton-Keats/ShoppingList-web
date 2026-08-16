@@ -17,6 +17,10 @@ export const ENV = {
 		return value;
 	},
 
+	get PUBLIC_API_KEY(): string {
+		return getEnv('PUBLIC_API_KEY') || '';
+	},
+
 	get PUBLIC_APP_NAME(): string {
 		return getEnv('PUBLIC_APP_NAME') || APP_CONFIG.APP_NAME;
 	},

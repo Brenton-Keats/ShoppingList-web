@@ -10,7 +10,7 @@ The backend is a single Google Apps Script project bound to a Google Spreadsheet
 
 | File | Purpose |
 |------|---------|
-| `Code.ts` | Main entry point (`doGet`, `doPost`, `doOptions`) and CORS handling |
+| `Code.ts` | Main entry point (`doGet`, `doPost`) and API key validation |
 | `Config.ts` | Constants: sheet names, headers, default settings, entity types |
 | `Types.ts` | JSDoc type definitions for all entities and API payloads |
 | `SheetUtils.ts` | Spreadsheet operations: initialise, find, append, update, clear |
@@ -122,23 +122,30 @@ Submits client changes and receives server changes.
 2. Click the gear icon and select **Web app**.
 3. Configure the deployment:
    - **Description:** `Shopping List API v1`
-   - **Execute as:** `User accessing the web app`
+   - **Execute as:** `Me`
    - **Who has access:** `Anyone`
 4. Click **Deploy**.
 5. Copy the **Web app URL** shown in the dialog.
 
-### 6. Configure the Frontend
+### 6. Set the API Key
+
+1. In the Apps Script editor, go to **Project Settings** (gear icon in the left sidebar).
+2. Scroll down to **Script Properties** and click **Add script property**.
+3. Add: Key = `API_KEY`, Value = a strong random string (generate with `openssl rand -hex 32` or similar).
+4. Click **Save script properties**.
+
+### 7. Configure the Frontend
 
 1. In your GitHub repository, go to **Settings** → **Secrets and variables** → **Actions**.
-2. Add a **New repository secret**:
-   - Name: `PUBLIC_APPS_SCRIPT_URL`
-   - Value: your Apps Script web app URL (e.g., `https://script.google.com/macros/s/AKfycb.../exec`)
-3. The CI workflow injects this at build time. The frontend reads it from `$env/dynamic/public`.
+2. Add repository secrets:
+   - `PUBLIC_APPS_SCRIPT_URL`: your Apps Script web app URL (e.g., `https://script.google.com/macros/s/AKfycb.../exec`)
+   - `PUBLIC_API_KEY`: the same API key value you set in Script Properties
+3. The CI workflow injects these at build time. The frontend passes the key with every request.
 4. The frontend appends query parameters for routing:
-   - Initial sync: `GET {URL}?path=api/data`
-   - Sync changes: `POST {URL}?path=api/sync`
+   - Initial sync: `GET {URL}?path=api/data&key={API_KEY}`
+   - Sync changes: `POST {URL}?path=api/sync&key={API_KEY}` (key also in body as `apiKey`)
 
-### 7. Redeploying After Changes
+### 8. Redeploying After Changes
 
 Whenever you modify the Apps Script code:
 1. Click **Deploy > Manage deployments**.
@@ -147,10 +154,10 @@ Whenever you modify the Apps Script code:
 
 ## Security Notes
 
-- The deployment is configured for **trusted household use**.
-- No complex authentication is implemented; access control relies on the deployment URL being kept private.
+- The deployment uses a **shared API key** to prevent unauthorised access.
+- The key is stored in Apps Script's Script Properties (server-side) and baked into the frontend build via GitHub Secrets (never committed to source).
+- This is appropriate for a personal/household shopping list. See `SECURITY.md` in the project root for the full threat model and future hardening options.
 - The frontend never sees spreadsheet credentials; all sheet access happens server-side within Apps Script.
-- Do not commit the deployment URL to a public repository if the data should remain private.
 
 ## Data Model
 
@@ -184,9 +191,9 @@ The backend uses deterministic last-write-wins:
 - Verify the active spreadsheet is the one you created.
 
 ### CORS errors in the browser
-- Ensure the web app is deployed with **Who has access: Anyone**.
-- The `doOptions` handler in `Code.ts` handles preflight requests.
-- Apps Script web apps inherently allow cross-origin requests when deployed with public access.
+- Ensure the web app is deployed with **Execute as: Me** and **Who has access: Anyone**.
+- Google handles CORS headers automatically for this configuration.
+- "Execute as: User accessing the web app" does NOT work with cross-origin `fetch()` and will produce CORS errors.
 
 ### Sync not working
 - Verify the frontend is sending the correct `path` query parameter.

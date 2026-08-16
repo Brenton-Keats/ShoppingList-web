@@ -1,3 +1,12 @@
+/**
+ * API client for the Google Apps Script backend.
+ *
+ * Authentication: A shared API key is passed as a query parameter (?key=...)
+ * on every request. The key is baked into the frontend build from the
+ * PUBLIC_API_KEY environment variable (sourced from GitHub Secrets in CI,
+ * or .env locally). See SECURITY.md for the full threat model.
+ */
+
 import { ENV } from '$lib/config/env';
 import type { List, Section, Store, Product, ListItem, Setting } from '$lib/types';
 
@@ -110,8 +119,14 @@ function handleFetchError(error: unknown): ApiErrorImpl {
 
 export async function fetchServerData(): Promise<ServerDataResponse> {
 	try {
+		// Attach API key as query param for server-side validation
+		const url = new URL(ENV.PUBLIC_APPS_SCRIPT_URL);
+		if (ENV.PUBLIC_API_KEY) {
+			url.searchParams.set('key', ENV.PUBLIC_API_KEY);
+		}
+
 		const response = await withTimeout(
-			fetch(ENV.PUBLIC_APPS_SCRIPT_URL, {
+			fetch(url.toString(), {
 				method: 'GET',
 				headers: {
 					Accept: 'application/json'
@@ -137,14 +152,21 @@ export async function fetchServerData(): Promise<ServerDataResponse> {
 
 export async function submitChanges(params: SubmitChangesParams): Promise<SubmitChangesResponse> {
 	try {
+		// API key in both query param and body provides redundancy —
+		// the server checks query param first, body as fallback.
+		const url = new URL(ENV.PUBLIC_APPS_SCRIPT_URL);
+		if (ENV.PUBLIC_API_KEY) {
+			url.searchParams.set('key', ENV.PUBLIC_API_KEY);
+		}
+
 		const response = await withTimeout(
-			fetch(ENV.PUBLIC_APPS_SCRIPT_URL, {
+			fetch(url.toString(), {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
 					Accept: 'application/json'
 				},
-				body: JSON.stringify(params)
+				body: JSON.stringify({ ...params, apiKey: ENV.PUBLIC_API_KEY })
 			}),
 			REQUEST_TIMEOUT_MS
 		);
