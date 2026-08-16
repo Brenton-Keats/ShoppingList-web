@@ -137,7 +137,16 @@ export async function performSync(): Promise<boolean> {
 
 		// Apply any server-side changes we haven't seen yet
 		if (response.changes.length > 0) {
-			await applyServerChanges(response.changes);
+			// Map server response format (snake_case) to client format (camelCase)
+			const mappedChanges = response.changes.map((c: Record<string, unknown>) => ({
+				revision: c.revision ?? c['revision'],
+				entityType: c.entityType ?? c['entity_type'],
+				entityId: c.entityId ?? c['entity_id'],
+				operation: c.operation,
+				data: c.data ?? c['payload'] ?? {},
+				timestamp: c.timestamp
+			}));
+			await applyServerChanges(mappedChanges);
 			dataChanged = true;
 			syncStateStore.dataVersion++;
 		}
